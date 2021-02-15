@@ -30,14 +30,14 @@ public class UncompressedPublicKeys {
         return (ECPublicKey) keyFactory.generatePublic(otherKeySpec);
     }
 
-    public static byte[] encodeUncompressedECPublicKey(ECPublicKey pubKey) {
-        int keyLengthBytes = pubKey.getParams().getOrder().bitLength() / Byte.SIZE;
+    public static byte[] encodeUncompressedECPublicKey(ECPublicKey ecPublicKey) {
+        int keyLengthBytes = ecPublicKey.getParams().getOrder().bitLength() / Byte.SIZE;
         byte[] publicKeyEncoded = new byte[2 * keyLengthBytes + 1];
         publicKeyEncoded[0] = 0x04; 
 
         int offset = 1;
 
-        BigInteger x = pubKey.getW().getAffineX();
+        BigInteger x = ecPublicKey.getW().getAffineX();
         byte[] xba = x.toByteArray();
         if (xba.length > keyLengthBytes + 1 || xba.length == keyLengthBytes + 1 && xba[0] != 0) {
             throw new IllegalStateException("X coordinate of EC public key has wrong size");
@@ -50,7 +50,7 @@ public class UncompressedPublicKeys {
         }
         offset += keyLengthBytes;
 
-        BigInteger y = pubKey.getW().getAffineY();
+        BigInteger y = ecPublicKey.getW().getAffineY();
         byte[] yba = y.toByteArray();
         if (yba.length > keyLengthBytes + 1 || yba.length == keyLengthBytes + 1 && yba[0] != 0) {
             throw new IllegalStateException("Y coordinate of EC public key has wrong size");

@@ -80,7 +80,7 @@ public class CardsavrSession {
         
         try {
             // generate a passwordProof based on the integratorKey
-            String passwordProof = Encryption.generateSignedPasswordKey(username, password, integratorKey.getEncoded());
+            String passwordProof = Encryption.generateSignedPasswordKey(password, username, integratorKey.getEncoded());
 
             // generate a key pair for the client, share the public key with the server
             KeyPair kp;
@@ -97,9 +97,9 @@ public class CardsavrSession {
                 .build();
 
             JsonObject loginResponse = (JsonObject)post("/session/login", body, null);
+            
             this.sessionToken = loginResponse.getString("sessionToken");
             String base64ServerPublicKey = loginResponse.getString("serverPublicKey");
-
             ECPublicKey serverPublicKey = UncompressedPublicKeys.decodeUncompressedECPublicKey(
                     ((ECPublicKey) kp.getPublic()).getParams(), Base64.getDecoder().decode(base64ServerPublicKey));
 

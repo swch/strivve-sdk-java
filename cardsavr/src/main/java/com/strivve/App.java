@@ -41,7 +41,7 @@ public class App {
             CardsavrSession.APIHeaders headers = session.createHeaders();
             headers.paging = Json.createObjectBuilder().add("page", 1).add("page_length", 5).build();
             List<NameValuePair> filters = new ArrayList<>(1);
-            filters.add(new BasicNameValuePair("tags", "prod"));
+            filters.add(new BasicNameValuePair("tags", "canada"));
 
             JsonValue response = session.get("/merchant_sites", filters, headers);
             logger.info("Error: " + response.toString());
