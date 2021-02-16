@@ -3,7 +3,10 @@ package com.strivve;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -17,6 +20,7 @@ import com.strivve.CarsavrRESTException.Error;
 
 import java.util.ArrayList;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
@@ -82,4 +86,22 @@ public class E2ETest {
         assertTrue(errors[0].toString().endsWith("Property: bad_filter"));
     }
 
+    @Test
+    public void jobPostTest() throws IOException, CarsavrRESTException {
+        String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
+            .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
+        JsonObject jsonobj = Json.createReader(
+            new StringReader(data))
+            .read()
+            .asJsonObject();
+        CardsavrSession.APIHeaders headers = this.session.createHeaders();
+        headers.financialInsitution = "default";
+        JsonObject response = (JsonObject)session.post("/place_card_on_single_site_jobs", jsonobj, headers);
+        assertTrue("Place job should return a valid id", response.getInt("id") > 0);
+
+        response = (JsonObject)session.get("/place_card_on_single_site_jobs", response.getInt("id"), null);
+
+
+
+    }
 }

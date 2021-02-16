@@ -13,6 +13,7 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.json.Json;
+import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
@@ -114,6 +115,10 @@ public class CardsavrSession {
         }
     }
 
+    public JsonObject end() throws IOException, CarsavrRESTException {
+        return (JsonObject)get("/session/end", null, null);
+    }
+
     public JsonValue get(String path, List<NameValuePair> filters, APIHeaders headers) throws IOException,
             CarsavrRESTException {
         return client.apiRequest(new HttpGet(makeURLString(path, filters)), null, headers);
@@ -148,7 +153,7 @@ public class CardsavrSession {
     
     public final class APIHeaders {
         JsonObject hydration;
-        JsonObject paging;
+        JsonArray paging;
         JsonObject trace;
         String safeKey;
         String newSafeKey;
@@ -164,11 +169,11 @@ public class CardsavrSession {
             if (trace != null)
                 request.setHeader("trace", trace.toString());
             if (safeKey != null)
-                request.setHeader("cardholder_safe_key", Encryption.encryptAES256(safeKey, sessionKey));
+                request.setHeader("cardholder-safe-key", Encryption.encryptAES256(safeKey, sessionKey));
+            if (newSafeKey != null)
+                request.setHeader("new-cardholder-safe-key", Encryption.encryptAES256(newSafeKey, sessionKey));
             if (financialInsitution != null)
-                request.setHeader("new_cardholder_safe_key", Encryption.encryptAES256(newSafeKey, sessionKey));
-            if (financialInsitution != null)
-                request.setHeader("financial_institution", financialInsitution);
+                request.setHeader("financial-institution", financialInsitution);
         }
     }
 

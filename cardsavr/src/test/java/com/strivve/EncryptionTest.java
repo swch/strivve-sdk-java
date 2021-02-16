@@ -82,7 +82,7 @@ public class EncryptionTest {
     @Test
     public void hmacSign() throws InvalidKeyException, NoSuchAlgorithmException {
         String signature = Encryption.hmacSign(stringToEncrypt.getBytes(), integratorKey.getEncoded());
-        assertEquals(signature, "/G/EmFauLHppkvXkX7wN2amzGCMGEV4CS0I37L1jG5Q=");
+        assertEquals("/G/EmFauLHppkvXkX7wN2amzGCMGEV4CS0I37L1jG5Q=", signature);
     }
 
     @Test
