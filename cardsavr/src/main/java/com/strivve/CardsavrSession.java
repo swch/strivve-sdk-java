@@ -1,5 +1,6 @@
 package com.strivve;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.MalformedURLException;
@@ -21,6 +22,7 @@ import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
 
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
@@ -37,6 +39,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Paths;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyManagementException;
@@ -125,19 +128,23 @@ public class CardsavrSession {
     }
 
     public JsonValue get(String path, int id, APIHeaders headers) throws IOException, CarsavrRESTException {
-        return client.apiRequest(new HttpGet(makeURLString(path + id, null)), null, headers);
+        return client.apiRequest(new HttpGet(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), null, headers);
     }
 
     public JsonValue post(String path, JsonObject body, APIHeaders headers) throws IOException, CarsavrRESTException {
         return client.apiRequest(new HttpPost(makeURLString(path, null)), body, headers);
     }
 
-    public JsonValue put(String path, JsonObject body, APIHeaders headers) throws IOException, CarsavrRESTException {
-        return client.apiRequest(new HttpPut(makeURLString(path, null)), body, headers);
+    public JsonValue put(String path, List<NameValuePair> filters, JsonObject body, APIHeaders headers) throws IOException, CarsavrRESTException {
+        return client.apiRequest(new HttpPut(makeURLString(path, filters)), body, headers);
+    }
+
+    public JsonValue put(String path, int id, JsonObject body, APIHeaders headers) throws IOException, CarsavrRESTException {
+        return client.apiRequest(new HttpPut(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), body, headers);
     }
 
     public JsonValue delete(String path, int id, APIHeaders headers) throws IOException, CarsavrRESTException {
-        return client.apiRequest(new HttpDelete(makeURLString(path + id, null)), null, headers);
+        return client.apiRequest(new HttpDelete(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), null, headers);
     }
 
     private String makeURLString(String path, List<NameValuePair> filters) throws MalformedURLException {
@@ -152,8 +159,8 @@ public class CardsavrSession {
     }
     
     public final class APIHeaders {
-        JsonObject hydration;
-        JsonArray paging;
+        JsonArray hydration;
+        JsonObject paging;
         JsonObject trace;
         String safeKey;
         String newSafeKey;
@@ -231,6 +238,9 @@ public class CardsavrSession {
                 }
         
                 HttpResponse response = httpclient.execute(request);
+                if (response.getStatusLine().getStatusCode() == HttpStatus.SC_NOT_FOUND) {
+                    throw new FileNotFoundException(response.getStatusLine() + " Couldn't locate entity for: " + request.getURI().toURL().getFile());
+                }
                 String result = EntityUtils.toString(response.getEntity());
         
                 String body;

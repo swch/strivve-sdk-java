@@ -7,8 +7,7 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.*;
 
 import javax.json.Json;
 import javax.json.JsonArray;
@@ -19,6 +18,8 @@ import javax.json.JsonValue;
 import com.strivve.CarsavrRESTException.Error;
 
 import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.NameValuePair;
@@ -87,21 +88,62 @@ public class E2ETest {
     }
 
     @Test
-    public void jobPostTest() throws IOException, CarsavrRESTException {
+    public void jobPostTest() throws IOException, CarsavrRESTException, InterruptedException {
         String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
-            .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
-        JsonObject jsonobj = Json.createReader(
-            new StringReader(data))
-            .read()
-            .asJsonObject();
+                .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
+        JsonObject jsonobj = Json.createReader(new StringReader(data)).read().asJsonObject();
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
         headers.financialInsitution = "default";
-        JsonObject response = (JsonObject)session.post("/place_card_on_single_site_jobs", jsonobj, headers);
+        JsonObject response = (JsonObject) session.post("/place_card_on_single_site_jobs", jsonobj, headers);
+        int jobId = response.getInt("id");
         assertTrue("Place job should return a valid id", response.getInt("id") > 0);
 
-        response = (JsonObject)session.get("/place_card_on_single_site_jobs", response.getInt("id"), null);
+        final CountDownLatch latch = new CountDownLatch(5);
 
+        Timer t = new Timer();
+        TimerTask tt = new TimerTask() {
+            List<String> assertStatuses = new LinkedList<>();
+            boolean addNextStatus = false;
 
-
+            public void run() {
+                JsonObject jobStatus;
+                try {
+                    jobStatus = (JsonObject) session.get("/place_card_on_single_site_jobs", jobId, null);
+                    String status = jobStatus.getString("status");
+                    if (addNextStatus) {
+                        assertStatuses.add(status);
+                        addNextStatus = false;
+                    }
+                    if (status.equals("PENDING_NEWCREDS")) {
+                        JsonObject newCreds = Json.createObjectBuilder()
+                            .add("account", Json.createObjectBuilder()
+                                .add("username", "good_email")
+                                .add("password", "no_tfa")
+                                .build())
+                            .build();
+                        JsonValue obj = session.put("/place_card_on_single_site_jobs", jobId, newCreds, null);
+                        addNextStatus = true;
+                    } else if (status.equals("PENDING_TFA")) {
+                        JsonObject newCreds = Json.createObjectBuilder()
+                            .add("account", Json.createObjectBuilder()
+                                .add("tfa", "1234")
+                                .build())
+                            .build();
+                        JsonValue obj = session.put("/place_card_on_single_site_jobs", jobId, newCreds, null);
+                        addNextStatus = true;
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } catch (CarsavrRESTException e) {
+                    System.out.println(e.getRESTErrors()[0]);
+                    e.printStackTrace();
+                }
+                latch.countDown();
+            }
+        };
+        t.scheduleAtFixedRate(tt, 1000, 5000);  //wait one second, then wait five
+        //System.out.println(tt.assertStatuses);
+        latch.await();
+        t.cancel();
     }
 }
