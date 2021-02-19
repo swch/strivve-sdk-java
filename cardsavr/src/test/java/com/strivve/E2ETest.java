@@ -32,22 +32,23 @@ import org.junit.Test;
  */
 public class E2ETest {
 
-    final String username = "testing_user";
-    final String password = "password";
-    final String integratorName = "testing_integrator";
-    final String integratorKey = "OkzxB4HQit43k3OEbSYTAPG5hf96erAAlhb4prAjH/I=";
-    final String apiServer = "api.localhost.cardsavr.io";
+    final String username = "REDACTED";
+    final String password = "REDACTED";
+    final String integratorName = "REDACTED";
+    final String integratorKey = "REDACTED";
+    final String apiServer = "api.REDACTED.cardsavr.io";
+    final int apiPort = 443;
 
     CardsavrSession session;
 
     @Before
     public void rejectUnauthorized() {
-        CardsavrSession.rejectUnauthroized(false);
+        CardsavrSession.rejectUnauthroized(true);
     }
 
     @Before
     public void loginTest() throws IOException, CarsavrRESTException {
-        this.session = CardsavrSession.createSession(integratorName, integratorKey, apiServer);
+        this.session = CardsavrSession.createSession(integratorName, integratorKey, apiServer, apiPort);
         JsonObject obj = (JsonObject) session.login(username, password, null);
         assertTrue(obj.getInt("user_id") > 0);
     }

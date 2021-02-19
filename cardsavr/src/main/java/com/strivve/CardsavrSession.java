@@ -58,17 +58,22 @@ public class CardsavrSession {
     public static void rejectUnauthroized(boolean reject) { rejectUnauthorized = reject; }
 
     public static CardsavrSession createSession(String integratorName, String integratorKey, String apiInstance) {
-        return new CardsavrSession(integratorName, integratorKey, apiInstance);
+        return createSession(integratorName, integratorKey, apiInstance, 443);
+    }
+
+    public static CardsavrSession createSession(String integratorName, String integratorKey, String apiInstance, int apiPort) {
+        return new CardsavrSession(integratorName, integratorKey, apiInstance, apiPort);
     }
 
     private String integratorName;
     private SecretKey integratorKey;
     private String apiInstance;
+    private int apiPort = 443;
     private SecretKey sessionKey;
     private JsonObject sessionTrace;
     private String sessionToken;
 
-    private CardsavrSession(String integratorName, String integratorKey, String apiInstance) {
+    private CardsavrSession(String integratorName, String integratorKey, String apiInstance, int apiPort) {
 
         this.integratorName = integratorName;
         this.integratorKey = Encryption.convertRawToAESKey(Base64.getDecoder().decode(integratorKey));
@@ -151,7 +156,7 @@ public class CardsavrSession {
         if (filters != null) {
             path += "?" + URLEncodedUtils.format(filters, StandardCharsets.UTF_8);
         }
-        return new URL("https", apiInstance, 8443, path).toString();
+        return new URL("https", apiInstance, apiPort, path).toString();
     }
 
     public APIHeaders createHeaders() {
