@@ -164,12 +164,13 @@ public class CardsavrSession {
     }
     
     public final class APIHeaders {
-        JsonArray hydration;
-        JsonObject paging;
-        JsonObject trace;
-        String safeKey;
-        String newSafeKey;
-        String financialInsitution;
+        protected JsonArray hydration;
+        protected JsonObject paging;
+        protected JsonObject trace;
+        protected String safeKey;
+        protected String newSafeKey;
+        protected String financialInsitution;
+		protected String envelopeId;
 
         private void populateHeaders(HttpUriRequest request)
                 throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException,
@@ -186,6 +187,8 @@ public class CardsavrSession {
                 request.setHeader("new-cardholder-safe-key", Encryption.encryptAES256(newSafeKey, sessionKey));
             if (financialInsitution != null)
                 request.setHeader("financial-institution", financialInsitution);
+            if (envelopeId != null)
+                request.setHeader("envelope-id", envelopeId);
         }
     }
 

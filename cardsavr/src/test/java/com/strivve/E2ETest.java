@@ -96,55 +96,63 @@ public class E2ETest {
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
         headers.financialInsitution = "default";
         JsonObject response = (JsonObject) session.post("/place_card_on_single_site_jobs", jsonobj, headers);
-        int jobId = response.getInt("id");
         assertTrue("Place job should return a valid id", response.getInt("id") > 0);
 
-        final CountDownLatch latch = new CountDownLatch(5);
+        final CountDownLatch latch = new CountDownLatch(1);
 
+        List<String> assertStatuses = new LinkedList<>();
         Timer t = new Timer();
-        TimerTask tt = new TimerTask() {
-            List<String> assertStatuses = new LinkedList<>();
-            boolean addNextStatus = false;
-
+        t.scheduleAtFixedRate(new TimerTask() {
             public void run() {
-                JsonObject jobStatus;
+
+                int jobId = response.getInt("id");
+                CardsavrSession.APIHeaders headers = session.createHeaders();
+                headers.hydration = Json.createArrayBuilder().add("credential_requests").build();
+
                 try {
-                    jobStatus = (JsonObject) session.get("/place_card_on_single_site_jobs", jobId, null);
-                    String status = jobStatus.getString("status");
-                    if (addNextStatus) {
+                    JsonObject job = (JsonObject) session.get("/place_card_on_single_site_jobs", jobId, headers);
+                    String status = job.getString("status");
+                    if (!assertStatuses.contains(status)) {
                         assertStatuses.add(status);
-                        addNextStatus = false;
+                        System.out.println(status);
                     }
-                    if (status.equals("PENDING_NEWCREDS")) {
-                        JsonObject newCreds = Json.createObjectBuilder()
-                            .add("account", Json.createObjectBuilder()
-                                .add("username", "good_email")
-                                .add("password", "no_tfa")
-                                .build())
-                            .build();
-                        JsonValue obj = session.put("/place_card_on_single_site_jobs", jobId, newCreds, null);
-                        addNextStatus = true;
-                    } else if (status.equals("PENDING_TFA")) {
-                        JsonObject newCreds = Json.createObjectBuilder()
-                            .add("account", Json.createObjectBuilder()
-                                .add("tfa", "1234")
-                                .build())
-                            .build();
-                        JsonValue obj = session.put("/place_card_on_single_site_jobs", jobId, newCreds, null);
-                        addNextStatus = true;
+                    JsonArray arr = (JsonArray)job.get("credential_requests");
+                    if (arr != null && arr.size() == 1 && arr.getJsonObject(0).getString("envelope_id") != null) {
+
+                        headers = session.createHeaders();
+                        headers.envelopeId = arr.getJsonObject(0).getString("envelope_id");
+                        JsonObject newCreds = null;
+                        if (status.equals("PENDING_NEWCREDS")) {
+                            newCreds = Json.createObjectBuilder()
+                                .add("account", Json.createObjectBuilder()
+                                    .add("username", "good_email")
+                                    .add("password", "tfa")
+                                    .build())
+                                .build();
+                        } else if (status.equals("PENDING_TFA")) {
+                            newCreds = Json.createObjectBuilder()
+                                .add("account", Json.createObjectBuilder()
+                                    .add("tfa", "1234")
+                                    .build())
+                                .build();
+                            }
+                        JsonValue obj = session.put("/place_card_on_single_site_jobs", jobId, newCreds, headers);
+                    } else if (!job.get("completed_on").toString().equals("null")) {
+                        t.cancel();
+                        latch.countDown();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
+                    latch.countDown();
                 } catch (CarsavrRESTException e) {
                     System.out.println(e.getRESTErrors()[0]);
                     e.printStackTrace();
+                    latch.countDown();
                 }
-                latch.countDown();
             }
-        };
-        t.scheduleAtFixedRate(tt, 1000, 5000);  //wait one second, then wait five
-        //System.out.println(tt.assertStatuses);
+        }, 1000, 5000); //wait one second, then wait five
         latch.await();
-        t.cancel();
+        assertEquals("Place job should finish with a status of SUCCESSFUL", "SUCCESSFUL", assertStatuses.get(assertStatuses.size() - 1));
+        assertTrue("Status entries length should be at least 6", assertStatuses.size() >= 6);
     }
 }
