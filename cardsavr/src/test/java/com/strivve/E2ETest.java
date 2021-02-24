@@ -22,7 +22,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.http.HttpHost;
 import org.apache.http.NameValuePair;
+import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
 import org.junit.Test;
@@ -32,12 +34,12 @@ import org.junit.Test;
  */
 public class E2ETest {
 
-    final String username = "REDACTED";
-    final String password = "REDACTED";
     final String integratorName = "REDACTED";
     final String integratorKey = "REDACTED";
-    final String apiServer = "api.REDACTED.cardsavr.io";
-    final int apiPort = 443;
+    final HttpHost cardsavrServer = new HttpHost("api.REDACTED.cardsavr.io",  443);
+    final UsernamePasswordCredentials cardsavrCreds = new UsernamePasswordCredentials("REDACTED", "REDACTED");
+    final HttpHost proxy = null;
+    final UsernamePasswordCredentials proxyCreds = null;
 
     CardsavrSession session;
 
@@ -48,8 +50,9 @@ public class E2ETest {
 
     @Before
     public void loginTest() throws IOException, CarsavrRESTException {
-        this.session = CardsavrSession.createSession(integratorName, integratorKey, apiServer, apiPort);
-        JsonObject obj = (JsonObject) session.login(username, password, null);
+
+        this.session = CardsavrSession.createSession(integratorName, integratorKey, cardsavrServer, proxy, proxyCreds);
+        JsonObject obj = (JsonObject) session.login(cardsavrCreds, null);
         assertTrue(obj.getInt("user_id") > 0);
     }
 

@@ -21,9 +21,13 @@ import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
 
+import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.CredentialsProvider;
 import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
 import org.apache.http.client.methods.HttpGet;
@@ -35,8 +39,11 @@ import org.apache.http.conn.ssl.NoopHostnameVerifier;
 import org.apache.http.conn.ssl.SSLContextBuilder;
 import org.apache.http.conn.ssl.TrustAllStrategy;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
 import org.apache.http.util.EntityUtils;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
@@ -57,31 +64,65 @@ public class CardsavrSession {
     private static boolean rejectUnauthorized = true;
     public static void rejectUnauthroized(boolean reject) { rejectUnauthorized = reject; }
 
-    public static CardsavrSession createSession(String integratorName, String integratorKey, String apiInstance) {
-        return createSession(integratorName, integratorKey, apiInstance, 443);
+    public static CardsavrSession createSession(String integratorName, String integratorKey, HttpHost apiServer)
+            throws IOException {
+        return createSession(integratorName, integratorKey, apiServer, null, null);
     }
 
-    public static CardsavrSession createSession(String integratorName, String integratorKey, String apiInstance, int apiPort) {
-        return new CardsavrSession(integratorName, integratorKey, apiInstance, apiPort);
+    public static CardsavrSession createSession(String integratorName, String integratorKey, HttpHost apiServer, HttpHost proxyhost, UsernamePasswordCredentials creds)
+            throws IOException {
+        return new CardsavrSession(integratorName, integratorKey, apiServer, proxyhost, creds);
     }
 
     private String integratorName;
     private SecretKey integratorKey;
-    private String apiInstance;
-    private int apiPort = 443;
     private SecretKey sessionKey;
     private JsonObject sessionTrace;
     private String sessionToken;
+    CloseableHttpClient httpClient;
+    private HttpHost apiServer;
 
-    private CardsavrSession(String integratorName, String integratorKey, String apiInstance, int apiPort) {
+    private CardsavrSession(String integratorName, String integratorKey, HttpHost apiServer, HttpHost proxyhost, UsernamePasswordCredentials proxyCreds)
+            throws IOException {
 
         this.integratorName = integratorName;
         this.integratorKey = Encryption.convertRawToAESKey(Base64.getDecoder().decode(integratorKey));
-        this.apiInstance = apiInstance;
         this.sessionTrace = Json.createObjectBuilder().add("key", integratorKey).build();
+        this.apiServer = apiServer;
+        this.httpClient = buildHttpClient(proxyhost, proxyCreds);
     }
 
-    public JsonObject login(String username, String password, JsonObject trace) throws IOException,
+    private CloseableHttpClient buildHttpClient(HttpHost proxyhost, UsernamePasswordCredentials creds) throws IOException {
+
+        HttpClientBuilder builder = HttpClients.custom();
+        //can't run rejectunauthorized through a proxy...sorry!
+        if (!CardsavrSession.rejectUnauthorized) {
+            if (proxyhost != null) {
+                throw new IOException("Unable to run self-signed certs through a proxy");
+            }
+            try {
+                builder = builder
+                    .setSSLContext(new SSLContextBuilder()
+                    .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
+                    .build())
+                    .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
+            } catch (KeyManagementException | KeyStoreException | NoSuchAlgorithmException e) {
+                throw new IOException("Unable to establish insecure HttpClient: " + e.getMessage());
+            }
+        } else if (proxyhost != null) {
+            if (creds != null) {
+                CredentialsProvider credentialsPovider = new BasicCredentialsProvider();
+                credentialsPovider.setCredentials(new AuthScope(proxyhost.getHostName(), proxyhost.getPort()), creds);
+                builder = builder.setDefaultCredentialsProvider(credentialsPovider);
+            }
+            builder = builder.setRoutePlanner(new DefaultProxyRoutePlanner(proxyhost));
+        } else if (creds != null) {
+            throw new IOException("Cannot set credentials on non-proxy connection.");            
+        }
+        return builder.build();
+    }
+
+    public JsonObject login(UsernamePasswordCredentials cardsavrCreds, JsonObject trace) throws IOException,
             CarsavrRESTException {
         
         if (trace != null) 
@@ -89,7 +130,7 @@ public class CardsavrSession {
         
         try {
             // generate a passwordProof based on the integratorKey
-            String passwordProof = Encryption.generateSignedPasswordKey(password, username, integratorKey.getEncoded());
+            String passwordProof = Encryption.generateSignedPasswordKey(cardsavrCreds.getPassword(), cardsavrCreds.getUserName(), integratorKey.getEncoded());
 
             // generate a key pair for the client, share the public key with the server
             KeyPair kp;
@@ -100,7 +141,7 @@ public class CardsavrSession {
                     .encodeToString(UncompressedPublicKeys.encodeUncompressedECPublicKey((ECPublicKey) kp.getPublic()));
 
             JsonObject body = Json.createObjectBuilder()
-                .add("userName", username)
+                .add("userName", cardsavrCreds.getUserName())
                 .add("passwordProof", passwordProof)
                 .add("clientPublicKey", clientPublicKeyBase64)
                 .build();
@@ -156,7 +197,7 @@ public class CardsavrSession {
         if (filters != null) {
             path += "?" + URLEncodedUtils.format(filters, StandardCharsets.UTF_8);
         }
-        return new URL("https", apiInstance, apiPort, path).toString();
+        return new URL("https", apiServer.getHostName(), apiServer.getPort(), path).toString();
     }
 
     public APIHeaders createHeaders() {
@@ -194,18 +235,6 @@ public class CardsavrSession {
 
     private final class CardsavrClient {
 
-        private CloseableHttpClient createInsecureHttpClient() throws IOException {
-            try {
-                return HttpClients.custom()
-                        .setSSLContext(new SSLContextBuilder()
-                        .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
-                        .build())
-                        .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE).build();
-            } catch (KeyManagementException | KeyStoreException | NoSuchAlgorithmException e) {
-                throw new IOException("Unable to establish insecure HttpClient: " + e.getMessage());
-            }
-        }
-        
         private JsonValue apiRequest(HttpUriRequest request, JsonObject jsonBody, APIHeaders headers)
                 throws IOException, CarsavrRESTException {
 
@@ -213,11 +242,7 @@ public class CardsavrSession {
             String nonce = Long.toString(new Date().getTime());
             String requestSigning = request.getURI().toURL().getFile() + authorization + nonce;
 
-            CloseableHttpClient httpclient = 
-                CardsavrSession.rejectUnauthorized ? 
-                HttpClients.createDefault() : 
-                createInsecureHttpClient();
-            try {
+             try {
                 SecretKey encryptionKey = sessionKey != null ? sessionKey : integratorKey;
 
                 if (jsonBody != null && (request instanceof HttpEntityEnclosingRequestBase)) {
@@ -245,7 +270,7 @@ public class CardsavrSession {
                     headers.populateHeaders(request);
                 }
         
-                HttpResponse response = httpclient.execute(request);
+                HttpResponse response = httpClient.execute(request);
                 if (response.getStatusLine().getStatusCode() == HttpStatus.SC_NOT_FOUND) {
                     throw new FileNotFoundException(response.getStatusLine() + " Couldn't locate entity for: " + request.getURI().toURL().getFile());
                 }
@@ -279,8 +304,6 @@ public class CardsavrSession {
                      NoSuchPaddingException | InvalidAlgorithmParameterException | 
                      IllegalBlockSizeException | BadPaddingException e) {
                 throw new CarsavrEncryptionException(e.getMessage(), e);
-            } finally {
-                httpclient.close();
             }
         }
     }
