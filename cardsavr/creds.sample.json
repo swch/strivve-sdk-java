@@ -1,0 +1,12 @@
+{
+    "integrator_name" : "REDACTED",
+    "integrator_key" : "REDACTED",
+    "username" : "REDACTED",
+    "password" : "REDACTED",
+    "api_server" : "api.REDACTED.cardsavr.io",
+    "api_port" : 443,
+    "proxy_server" : "REDACTED",
+    "proxy_port" : 8443,
+    "proxy_username" : "REDACTED",
+    "proxy_password" : "REDACTED"
+}

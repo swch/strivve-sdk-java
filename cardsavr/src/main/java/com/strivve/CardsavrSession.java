@@ -303,6 +303,7 @@ public class CardsavrSession {
             } catch (InvalidKeyException | NoSuchAlgorithmException | 
                      NoSuchPaddingException | InvalidAlgorithmParameterException | 
                      IllegalBlockSizeException | BadPaddingException e) {
+                e.printStackTrace();
                 throw new CarsavrEncryptionException(e.getMessage(), e);
             }
         }
