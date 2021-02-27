@@ -6,6 +6,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -47,7 +48,18 @@ public class E2ETest {
     CardsavrSession session;
 
     @Before
-    public void loadCreds() throws FileNotFoundException {
+    public void loadCreds() throws FileNotFoundException, MalformedURLException {
+        try {
+            TestRunner tr = new TestRunner();
+            this.integratorName = tr.integratorName;
+            this.integratorKey = tr.integratorKey;
+            this.cardsavrServer = tr.cardsavrServer;
+            this.cardsavrCreds = tr.cardsavrCreds;
+            return;
+        } catch (FileNotFoundException e) {
+            System.out.println("Couldn't find docker.local.json, use creds.json");
+        }
+
         JsonReader reader = Json.createReader(new FileInputStream("creds.json"));
         JsonObject creds = reader.readObject();
         reader.close();
