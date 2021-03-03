@@ -2,10 +2,10 @@ package com.strivve;
 
 import static org.junit.Assert.*;
 
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.StringReader;
+import java.net.MalformedURLException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -14,7 +14,6 @@ import java.util.*;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
-import javax.json.JsonReader;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 
@@ -25,9 +24,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.http.HttpHost;
 import org.apache.http.NameValuePair;
-import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,42 +34,25 @@ import org.junit.Test;
  */
 public class E2ETest {
 
-    String integratorName;
-    String integratorKey;
-    HttpHost cardsavrServer;
-    UsernamePasswordCredentials cardsavrCreds;
-    HttpHost proxy;
-    UsernamePasswordCredentials proxyCreds;
+    TestConfig testConfig;
 
     CardsavrSession session;
 
     @Before
-    public void loadCreds() throws FileNotFoundException {
-        JsonReader reader = Json.createReader(new FileInputStream("creds.json"));
-        JsonObject creds = reader.readObject();
-        reader.close();
-        integratorName = creds.getString("integrator_name");
-        integratorKey = creds.getString("integrator_key");
-        cardsavrServer = new HttpHost(creds.getString("api_server"), creds.getInt("api_port", 443));
-        cardsavrCreds = new UsernamePasswordCredentials(creds.getString("username"), creds.getString("password"));
-        if (creds.containsKey("proxy_server")) {
-            proxy = new HttpHost(creds.getString("proxy_server"), creds.getInt("proxy_port"));
-            if (creds.containsKey("proxy_username") && creds.containsKey("proxy_password")) {
-                proxyCreds = new UsernamePasswordCredentials(creds.getString("proxy_username"), creds.getString("proxy_password"));
-            }
-        }
+    public void loadCreds() throws FileNotFoundException, MalformedURLException {
+        testConfig = TestConfig.getTestConfig();
     }
 
     @Before
     public void rejectUnauthorized() {
-        CardsavrSession.rejectUnauthroized(true);
+        CardsavrSession.rejectUnauthorized(false);
     }
 
     @Before
     public void loginTest() throws IOException, CarsavrRESTException {
 
-        this.session = CardsavrSession.createSession(integratorName, integratorKey, cardsavrServer, proxy, proxyCreds);
-        JsonObject obj = (JsonObject) session.login(cardsavrCreds, null);
+        this.session = CardsavrSession.createSession(testConfig.integratorName, testConfig.integratorKey, testConfig.cardsavrServer, testConfig.proxy, testConfig.proxyCreds);
+        JsonObject obj = (JsonObject) session.login(testConfig.cardsavrCreds, null);
         assertTrue(obj.getInt("user_id") > 0);
     }
 
