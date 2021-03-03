@@ -26,7 +26,7 @@
             "cardholder_ref": {
               "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
             },
-            "first_name":"Swtich",
+            "first_name":"Switch",
             "last_name":"Strivve",
             "address1":"SGTClNSCCMqlfjuzTmJuepDyFgvWhlCMRycXlKGiRIooOJJkoXeObOcAwJMGeqjSDWfhTHobAWMimcCynMIQcvlBFSbMQlwUFyJ",
             "address2":"AyFgoCTjCLXUQVylBAfkHJOtqkkKJjuaLHnmJpSctqBOQueIvciyAUPqYoFpkiAPlkGjgPuabhAPCHFPvaxciObOmIBvBUWpngD",
