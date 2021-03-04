@@ -111,9 +111,6 @@ public class CardsavrSession {
         HttpClientBuilder builder = HttpClients.custom();
         //can't run rejectunauthorized through a proxy...sorry!
         if (!CardsavrSession.rejectUnauthorized) {
-            if (proxyhost != null) {
-                throw new IOException("Unable to run self-signed certs through a proxy");
-            }
             try {
                 builder = builder
                     .setSSLContext(new SSLContextBuilder()
@@ -123,7 +120,8 @@ public class CardsavrSession {
             } catch (KeyManagementException | KeyStoreException | NoSuchAlgorithmException e) {
                 throw new IOException("Unable to establish insecure HttpClient: " + e.getMessage());
             }
-        } else if (proxyhost != null) {
+        }
+        if (proxyhost != null) {
             if (creds != null) {
                 CredentialsProvider credentialsPovider = new BasicCredentialsProvider();
                 credentialsPovider.setCredentials(new AuthScope(proxyhost.getHostName(), proxyhost.getPort()), creds);
