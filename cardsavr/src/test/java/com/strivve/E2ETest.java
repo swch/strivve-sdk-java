@@ -148,7 +148,7 @@ public class E2ETest {
                         t.cancel();
                         latch.countDown();
                     }
-                    if (totalTime > 120000) {
+                    if (totalTime > 600000) {
                         throw new IOException("Task timed out after two minutes, exit.");
                     }
                 } catch (IOException e) {
