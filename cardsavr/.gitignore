@@ -89,3 +89,9 @@ nb-configuration.xml
 ##############################
 creds_*.json
 creds.json
+docker.local.json
+
+##############################
+## log files
+##############################
+*_logs.txt
