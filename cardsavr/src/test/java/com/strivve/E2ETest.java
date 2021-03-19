@@ -45,7 +45,7 @@ public class E2ETest {
 
     @Before
     public void rejectUnauthorized() {
-        CardsavrSession.rejectUnauthorized(true);
+        CardsavrSession.rejectUnauthorized(false);
     }
 
     @Before
@@ -91,6 +91,7 @@ public class E2ETest {
         assertTrue(errors[0].toString().endsWith("Property: bad_filter"));
     }
 
+    @Test
     public void jobPostTest() throws IOException, CarsavrRESTException, InterruptedException {
         String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
                 .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
@@ -104,9 +105,13 @@ public class E2ETest {
 
         List<String> assertStatuses = new LinkedList<>();
         Timer t = new Timer();
+        int delay = 5000;
         t.scheduleAtFixedRate(new TimerTask() {
-            public void run() {
 
+            private int totalTime = 0;
+
+            public void run() {
+                totalTime += delay;
                 int jobId = response.getInt("id");
                 CardsavrSession.APIHeaders headers = session.createHeaders();
                 headers.hydration = Json.createArrayBuilder().add("credential_requests").build();
@@ -143,6 +148,9 @@ public class E2ETest {
                         t.cancel();
                         latch.countDown();
                     }
+                    if (totalTime > 120000) {
+                        throw new IOException("Task timed out after two minutes, exit.");
+                    }
                 } catch (IOException e) {
                     e.printStackTrace();
                     latch.countDown();
@@ -152,7 +160,7 @@ public class E2ETest {
                     latch.countDown();
                 }
             }
-        }, 1000, 5000); //wait one second, then wait five
+        }, 1000, delay); //wait one second, then wait five
         latch.await();
         assertEquals("Place job should finish with a status of SUCCESSFUL", "SUCCESSFUL", assertStatuses.get(assertStatuses.size() - 1));
         assertTrue("Status entries length should be at least 6", assertStatuses.size() >= 6);
