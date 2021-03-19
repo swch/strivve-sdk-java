@@ -45,7 +45,7 @@ public class E2ETest {
 
     @Before
     public void rejectUnauthorized() {
-        CardsavrSession.rejectUnauthorized(false);
+        CardsavrSession.rejectUnauthorized(true);
     }
 
     @Before
@@ -91,7 +91,6 @@ public class E2ETest {
         assertTrue(errors[0].toString().endsWith("Property: bad_filter"));
     }
 
-    @Test
     public void jobPostTest() throws IOException, CarsavrRESTException, InterruptedException {
         String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
                 .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
