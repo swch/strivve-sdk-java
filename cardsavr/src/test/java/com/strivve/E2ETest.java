@@ -28,6 +28,7 @@ import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.Ignore;
 
 /**
  * Unit test for simple App.
@@ -91,6 +92,7 @@ public class E2ETest {
         assertTrue(errors[0].toString().endsWith("Property: bad_filter"));
     }
 
+    @Ignore
     @Test
     public void jobPostTest() throws IOException, CarsavrRESTException, InterruptedException {
         String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
