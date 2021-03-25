@@ -164,6 +164,6 @@ public class E2ETest {
         }, 1000, delay); //wait one second, then wait five
         latch.await();
         assertEquals("Place job should finish with a status of SUCCESSFUL", "SUCCESSFUL", assertStatuses.get(assertStatuses.size() - 1));
-        assertTrue("Status entries length should be at least 9", assertStatuses.size() >= 9);
+        assertTrue("Status entries length should be at least 9", assertStatuses.size() >= 6);
     }
 }
