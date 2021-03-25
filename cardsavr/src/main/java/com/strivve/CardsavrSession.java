@@ -72,7 +72,7 @@ public class CardsavrSession {
     }
 
     private static String makeCamelCase(String key) {
-        //return key;
+//        return key;
         return StringUtils.uncapitalize(Arrays.asList(key.split("_"))
             .stream()
             .reduce("", (acc, element) -> acc + StringUtils.capitalize(element)))
@@ -284,6 +284,10 @@ public class CardsavrSession {
                 HttpResponse response = httpClient.execute(request);
                 if (response.getStatusLine().getStatusCode() == HttpStatus.SC_NOT_FOUND) {
                     throw new FileNotFoundException(response.getStatusLine() + " Couldn't locate entity for: " + request.getURI().toURL().getFile());
+                } else if (response.getStatusLine().getStatusCode() == 429) {
+                    throw new IOException(response.getStatusLine() + " Too many requests for: " + request.getURI().toURL().getFile());
+                } else if (response.getStatusLine().getStatusCode() == 403 || response.getStatusLine().getStatusCode() == 401) {
+                    throw new SecurityException(response.getStatusLine() + " " + request.getURI().toURL().getFile());
                 }
                 String result = EntityUtils.toString(response.getEntity());
         

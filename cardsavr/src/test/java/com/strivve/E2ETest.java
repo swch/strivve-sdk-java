@@ -92,7 +92,6 @@ public class E2ETest {
         assertTrue(errors[0].toString().endsWith("Property: bad_filter"));
     }
 
-    @Ignore
     @Test
     public void jobPostTest() throws IOException, CarsavrRESTException, InterruptedException {
         String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
@@ -165,6 +164,6 @@ public class E2ETest {
         }, 1000, delay); //wait one second, then wait five
         latch.await();
         assertEquals("Place job should finish with a status of SUCCESSFUL", "SUCCESSFUL", assertStatuses.get(assertStatuses.size() - 1));
-        assertTrue("Status entries length should be at least 6", assertStatuses.size() >= 6);
+        assertTrue("Status entries length should be at least 9", assertStatuses.size() >= 9);
     }
 }
