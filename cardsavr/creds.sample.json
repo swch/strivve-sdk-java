@@ -1,12 +1,17 @@
 {
-    "integrator_name" : "REDACTED",
-    "integrator_key" : "REDACTED",
-    "username" : "REDACTED",
-    "password" : "REDACTED",
-    "api_server" : "api.REDACTED.cardsavr.io",
-    "api_port" : 443,
-    "proxy_server" : "REDACTED",
-    "proxy_port" : 8443,
-    "proxy_username" : "REDACTED",
-    "proxy_password" : "REDACTED"
+    "instance": "mbudos",
+    "instances" : [
+        {
+            "instance": "mbudos",
+            "app_name": "<REDACTED>",
+            "app_key" : "<REDACTED>",
+            "app_password" : "<REDACTED>",
+            "app_username": "<REDACTED>",
+            "cardsavr_server" : "<REDACTED>",
+            "proxy_server" : "<REDACTED>",
+            "proxy_port" : "<REDACTED>",
+            "proxy_username" : "<REDACTED>",
+            "proxy_password" : "<REDACTED>"        
+        }
+    ]
 }

@@ -6,6 +6,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.StringReader;
 import java.net.MalformedURLException;
+import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -40,7 +41,7 @@ public class E2ETest {
     CardsavrSession session;
 
     @Before
-    public void loadCreds() throws FileNotFoundException, MalformedURLException {
+    public void loadCreds() throws FileNotFoundException, MalformedURLException, URISyntaxException {
         testConfig = TestConfig.getTestConfig();
     }
 

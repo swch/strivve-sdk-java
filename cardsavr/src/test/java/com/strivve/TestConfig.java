@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,7 +26,7 @@ public class TestConfig {
     HttpHost proxy;
     UsernamePasswordCredentials proxyCreds;
 
-    public static TestConfig getTestConfig() throws FileNotFoundException, MalformedURLException {
+    public static TestConfig getTestConfig() throws FileNotFoundException, MalformedURLException, URISyntaxException {
 
         TestConfig tc = new TestConfig();
         File f = new File("docker.local.json");
@@ -48,13 +50,15 @@ public class TestConfig {
             tc.integratorKey = values.get("testing/credentials/primary/integrator/key");
         //or simply use the creds file detailed in the creds.sample.json
         } else {
-            JsonReader reader = Json.createReader(new FileInputStream("creds.json"));
+            JsonReader reader = Json.createReader(new FileInputStream("strivve_creds.json"));
             JsonObject creds = reader.readObject();
             reader.close();
-            tc.integratorName = creds.getString("integrator_name");
-            tc.integratorKey = creds.getString("integrator_key");
-            tc.cardsavrServer = new HttpHost(creds.getString("api_server"), creds.getInt("api_port", 443));
-            tc.cardsavrCreds = new UsernamePasswordCredentials(creds.getString("username"), creds.getString("password"));
+            creds = TestConfig.getInstance(creds);
+            tc.integratorName = creds.getString("app_name");
+            tc.integratorKey = creds.getString("app_key");
+            URI uri = new URI(creds.getString("cardsavr_server"));
+            tc.cardsavrServer = new HttpHost(uri.getHost(), uri.getPort());
+            tc.cardsavrCreds = new UsernamePasswordCredentials(creds.getString("app_username"), creds.getString("app_password"));
             if (creds.containsKey("proxy_server")) {
                 tc.proxy = new HttpHost(creds.getString("proxy_server"), creds.getInt("proxy_port"));
                 if (creds.containsKey("proxy_username") && creds.containsKey("proxy_password")) {
@@ -63,5 +67,18 @@ public class TestConfig {
             }
         }
         return tc;
+    }
+
+    private static JsonObject getInstance(JsonObject creds) {
+        String instance = creds.getString("instance");
+        if (instance != null && creds.getJsonArray("instances") != null) {
+            for (JsonObject obj : creds.getJsonArray("instances").toArray(
+                new JsonObject[creds.getJsonArray("instances").size()])) {
+                    if (obj.getString("instance").equals(instance)) {
+                        return obj;
+                    }
+            }
+        }
+        return creds;
     }
 }
