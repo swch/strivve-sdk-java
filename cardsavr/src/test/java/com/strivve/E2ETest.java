@@ -29,7 +29,6 @@ import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
 import org.junit.Test;
-import org.junit.Ignore;
 
 /**
  * Unit test for simple App.
@@ -151,7 +150,7 @@ public class E2ETest {
                         latch.countDown();
                     }
                     if (totalTime > 600000) {
-                        throw new IOException("Task timed out after two minutes, exit.");
+                        throw new IOException("Task timed out after ten minutes, exit.");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();

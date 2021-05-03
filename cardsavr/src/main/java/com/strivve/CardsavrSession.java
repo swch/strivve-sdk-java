@@ -7,7 +7,6 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Date;
 import java.util.List;
-import java.util.Arrays;
 import java.util.Base64;
 
 import javax.crypto.BadPaddingException;
@@ -22,7 +21,6 @@ import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
@@ -65,19 +63,6 @@ public class CardsavrSession {
 
     private static boolean rejectUnauthorized = true;
     public static void rejectUnauthorized(boolean reject) { rejectUnauthorized = reject; }
-
-    private static String chopPrefix(String key) {
-        //return key;
-        return key.replace("x-cardsavr-", "");
-    }
-
-    private static String makeCamelCase(String key) {
-//        return key;
-        return StringUtils.uncapitalize(Arrays.asList(key.split("_"))
-            .stream()
-            .reduce("", (acc, element) -> acc + StringUtils.capitalize(element)))
-            .replace("username", "userName");
-    }
 
     public static CardsavrSession createSession(String integratorName, String integratorKey, HttpHost apiServer)
             throws IOException {
@@ -153,14 +138,14 @@ public class CardsavrSession {
                     .encodeToString(UncompressedPublicKeys.encodeUncompressedECPublicKey((ECPublicKey) kp.getPublic()));
 
             JsonObject body = Json.createObjectBuilder()
-                .add(makeCamelCase("username"), cardsavrCreds.getUserName())
-                .add(makeCamelCase("password_proof"), passwordProof)
-                .add(makeCamelCase("client_public_key"), clientPublicKeyBase64)
+                .add("username", cardsavrCreds.getUserName())
+                .add("password_proof", passwordProof)
+                .add("client_public_key", clientPublicKeyBase64)
                 .build();
             JsonObject loginResponse = (JsonObject)post("/session/login", body, null);
             
-            this.sessionToken = loginResponse.getString(makeCamelCase("session_token"));
-            String base64ServerPublicKey = loginResponse.getString(makeCamelCase("server_public_key"));
+            this.sessionToken = loginResponse.getString("session_token");
+            String base64ServerPublicKey = loginResponse.getString("server_public_key");
             ECPublicKey serverPublicKey = UncompressedPublicKeys.decodeUncompressedECPublicKey(
                     ((ECPublicKey) kp.getPublic()).getParams(), Base64.getDecoder().decode(base64ServerPublicKey));
 
@@ -228,19 +213,19 @@ public class CardsavrSession {
                 throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException,
                 InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
             if (hydration != null)
-                request.setHeader(chopPrefix("x-cardsavr-hydration"), hydration.toString());
+                request.setHeader("x-cardsavr-hydration", hydration.toString());
             if (paging != null)
-                request.setHeader(chopPrefix("x-cardsavr-paging"), paging.toString());
+                request.setHeader("x-cardsavr-paging", paging.toString());
             if (trace != null)
-                request.setHeader(chopPrefix("x-cardsavr-trace"), trace.toString());
+                request.setHeader("x-cardsavr-trace", trace.toString());
             if (safeKey != null)
-                request.setHeader(chopPrefix("x-cardsavr-cardholder-safe-key"), Encryption.encryptAES256(safeKey, sessionKey));
+                request.setHeader("x-cardsavr-cardholder-safe-key", Encryption.encryptAES256(safeKey, sessionKey));
             if (newSafeKey != null)
-                request.setHeader(chopPrefix("x-cardsavr-new-cardholder-safe-key"), Encryption.encryptAES256(newSafeKey, sessionKey));
+                request.setHeader("x-cardsavr-new-cardholder-safe-key", Encryption.encryptAES256(newSafeKey, sessionKey));
             if (financialInsitution != null)
-                request.setHeader(chopPrefix("x-cardsavr-financial-institution"), financialInsitution);
+                request.setHeader("x-cardsavr-financial-institution", financialInsitution);
             if (envelopeId != null)
-                request.setHeader(chopPrefix("x-cardsavr-envelope-id"), envelopeId);
+                request.setHeader("x-cardsavr-envelope-id", envelopeId);
         }
     }
 
@@ -259,7 +244,7 @@ public class CardsavrSession {
                 if (jsonBody != null && (request instanceof HttpEntityEnclosingRequestBase)) {
                     String encryptedBody = Encryption.encryptAES256(jsonBody.toString(), encryptionKey);
                     String newBody = Json.createObjectBuilder()
-                        .add(makeCamelCase("encrypted_body"), encryptedBody)
+                        .add("encrypted_body", encryptedBody)
                         .build()
                         .toString();
                     ((HttpEntityEnclosingRequestBase)request).setEntity(new StringEntity(newBody));
@@ -271,11 +256,12 @@ public class CardsavrSession {
                     request.setHeader("x-cardsavr-session-jwt", sessionToken);
                 }
                 String signature = Encryption.hmacSign(requestSigning.getBytes(), encryptionKey.getEncoded());                
-                request.setHeader(chopPrefix("x-cardsavr-client-application"), integratorName);
-                request.setHeader(chopPrefix("x-cardsavr-trace"), sessionTrace.toString());
-                request.setHeader(chopPrefix("x-cardsavr-nonce"), nonce);
-                request.setHeader(chopPrefix("x-cardsavr-authorization"), authorization);
-                request.setHeader(chopPrefix("x-cardsavr-signature"), signature);
+                String version = getClass().getPackage().getImplementationVersion();
+                request.setHeader("x-cardsavr-client-application", integratorName + " Strivve Java SDK v" + version);
+                request.setHeader("x-cardsavr-trace", sessionTrace.toString());
+                request.setHeader("x-cardsavr-nonce", nonce);
+                request.setHeader("x-cardsavr-authorization", authorization);
+                request.setHeader("x-cardsavr-signature", signature);
     
                 if (headers != null) {
                     headers.populateHeaders(request);
@@ -295,7 +281,7 @@ public class CardsavrSession {
                 try (JsonReader reader = Json.createReader(new StringReader(result))) {
                     JsonStructure jsonst = reader.read();
                     JsonObject jsonobj =jsonst.asJsonObject();
-                    String encryptedBody = jsonobj.getString(makeCamelCase("encrypted_body"));
+                    String encryptedBody = jsonobj.getString("encrypted_body");
                     body = Encryption.decryptAES256(encryptedBody, encryptionKey);
                 }
 

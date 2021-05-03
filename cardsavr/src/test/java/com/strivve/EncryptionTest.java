@@ -60,7 +60,7 @@ public class EncryptionTest {
         KeyPair kp2 = Encryption.generateECKeys(); // client
 
         // Unnecessary to test, but this is what we have to do in reality since the
-        // public keys are Bas64 encoded raw keys
+        // public keys are Base64 encoded raw keys
         String kp1PublicKeyString = Base64.getEncoder()
                 .encodeToString(UncompressedPublicKeys.encodeUncompressedECPublicKey((ECPublicKey) kp1.getPublic()));
         ECPublicKey kp1PublicKey = UncompressedPublicKeys.decodeUncompressedECPublicKey(
