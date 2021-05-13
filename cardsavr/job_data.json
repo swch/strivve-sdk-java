@@ -1,5 +1,6 @@
 {
     "status": "REQUESTED",
+    "queue_name": "VBS_LAMBDA_QUEUE",
     "type": "TURBO_MODE",
     "cardholder":
       {
