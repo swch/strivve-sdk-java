@@ -149,8 +149,10 @@ public class E2ETest {
                         t.cancel();
                         latch.countDown();
                     }
-                    if (totalTime > 600000) {
-                        throw new IOException("Task timed out after ten minutes, exit.");
+                    if (totalTime > 300000) {
+                        throw new IOException("Task timed out after five minutes, exit.");
+                    } else if (totalTime > 60000 && status.equals("QUEUED")) {
+                        throw new IOException("Task shouldn't be queued for more than one minute.");
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
