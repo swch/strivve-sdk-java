@@ -1,9 +1,9 @@
 {
     "status": "REQUESTED",
-    "queue_name": "vbs_lambda_queue",
+    "queue_name": "vbs_localstack_queue",
     "type": "TURBO_MODE",
     "cardholder":
-      {
+      { 
         "cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
         "custom_data" : {
             "myguid": "asdfadfasdfasdf"
