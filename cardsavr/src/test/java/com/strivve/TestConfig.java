@@ -42,7 +42,7 @@ public class TestConfig {
                 .collect(Collectors.toMap(j -> j.getString("key"), j -> j.getString("value")));;
             tc.integratorName = values.get("testing/credentials/primary/integrator/name");
             tc.integratorKey = values.get("testing/credentials/primary/integrator/key");
-            URL url = new URL(values.get("api_url_override"));
+            URL url = new URL("https://" + values.get("cardsavr/config/base_url")); 
             tc.cardsavrServer = new HttpHost(url.getHost(), url.getPort());
             tc.cardsavrCreds = new UsernamePasswordCredentials(
                 values.get("testing/credentials/primary/user/username"), 
