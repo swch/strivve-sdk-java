@@ -275,30 +275,34 @@ public class CardsavrSession {
                 } else if (response.getStatusLine().getStatusCode() == 403 || response.getStatusLine().getStatusCode() == 401) {
                     throw new SecurityException(response.getStatusLine() + " " + request.getURI().toURL().getFile());
                 }
-                String result = EntityUtils.toString(response.getEntity());
-        
-                String body;
-                try (JsonReader reader = Json.createReader(new StringReader(result))) {
-                    JsonStructure jsonst = reader.read();
-                    JsonObject jsonobj =jsonst.asJsonObject();
-                    String encryptedBody = jsonobj.getString("encrypted_body");
-                    body = Encryption.decryptAES256(encryptedBody, encryptionKey);
-                }
 
-                try (JsonReader reader = Json.createReader(new StringReader(body))) {
-                    JsonStructure jsonst = reader.read();
-                    if (jsonst.getValueType() == ValueType.ARRAY) {
-                        return jsonst.asJsonArray();
-                    } else {
-                        JsonObject obj = jsonst.asJsonObject();
-                        if (obj.getJsonArray("_errors") != null) {
-                            throw new CarsavrRESTException(
-                                response.getStatusLine() + " - error calling " + request.getURI().getPath(), 
-                                obj.getJsonArray("_errors"), obj);
-                        }
-                        return obj;
-                    } 
-                }
+                String result = EntityUtils.toString(response.getEntity());
+                if (result.length() > 0) {
+                    String body;
+                    try (JsonReader reader = Json.createReader(new StringReader(result))) {
+                        JsonStructure jsonst = reader.read();
+                        JsonObject jsonobj =jsonst.asJsonObject();
+                        String encryptedBody = jsonobj.getString("encrypted_body");
+                        body = Encryption.decryptAES256(encryptedBody, encryptionKey);
+                    }
+    
+                    try (JsonReader reader = Json.createReader(new StringReader(body))) {
+                        JsonStructure jsonst = reader.read();
+                        if (jsonst.getValueType() == ValueType.ARRAY) {
+                            return jsonst.asJsonArray();
+                        } else {
+                            JsonObject obj = jsonst.asJsonObject();
+                            if (obj.getJsonArray("_errors") != null) {
+                                throw new CarsavrRESTException(
+                                    response.getStatusLine() + " - error calling " + request.getURI().getPath(), 
+                                    obj.getJsonArray("_errors"), obj);
+                            }
+                            return obj;
+                        } 
+                    }
+                } else {
+                    return JsonValue.EMPTY_JSON_OBJECT;
+                }       
             } catch (IOException e) {
                 throw e;
             } catch (InvalidKeyException | NoSuchAlgorithmException | 
