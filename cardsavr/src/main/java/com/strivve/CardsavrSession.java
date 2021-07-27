@@ -190,6 +190,7 @@ public class CardsavrSession {
     }
 
     private String makeURLString(String path, List<NameValuePair> filters) throws MalformedURLException {
+        path = path.replace('\\', '/');
         if (filters != null) {
             path += "?" + URLEncodedUtils.format(filters, StandardCharsets.UTF_8);
         }
