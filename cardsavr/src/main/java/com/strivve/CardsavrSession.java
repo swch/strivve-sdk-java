@@ -15,6 +15,7 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.json.Json;
 import javax.json.JsonArray;
+import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
 import javax.json.JsonStructure;
@@ -202,13 +203,21 @@ public class CardsavrSession {
     }
     
     public final class APIHeaders {
-        protected JsonArray hydration;
-        protected JsonObject paging;
-        protected JsonObject trace;
-        protected String safeKey;
-        protected String newSafeKey;
-        protected String financialInsitution;
-		protected String envelopeId;
+        public JsonArray hydration;
+        public JsonObject paging;
+        public JsonObject trace;
+        public String safeKey;
+        public String newSafeKey;
+        public String financialInsitution;
+        public String envelopeId;
+
+        public JsonArray createJsonArray(String[] values) {
+            JsonArrayBuilder builder = Json.createArrayBuilder();
+            for (String value : values) {
+                builder.add(value);
+            }
+            return builder.build();        
+        }
 
         private void populateHeaders(HttpUriRequest request)
                 throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException,

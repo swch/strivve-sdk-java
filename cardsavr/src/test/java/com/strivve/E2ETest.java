@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
+import java.nio.channels.FileLockInterruptionException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -79,6 +80,15 @@ public class E2ETest {
         List<String> list = ((JsonArray) response).getJsonObject(0).getJsonArray("tags").stream()
                 .map(object -> ((JsonString) object).getString()).collect(Collectors.toList());
         assertTrue(list.contains("canada"));
+    }
+
+    @Test
+    public void selectNonExistentMerchantSite() throws IOException, CarsavrRESTException {
+        try {
+            session.get("/merchant_sites/0", null, null);
+        } catch (FileNotFoundException e) {
+            assertTrue(e.getMessage().indexOf("404 Not Found") != -1);
+        }
     }
 
     @Test
@@ -170,3 +180,4 @@ public class E2ETest {
         Thread.sleep(20000);
     }
 }
+ 
