@@ -1,0 +1,51 @@
+{
+    "status": "REQUESTED",
+    "queue_name": "vbs_localstack_queue",
+    "type": "TURBO_MODE",
+    "cardholder":
+      { 
+        "cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
+        "custom_data" : {
+            "myguid": "asdfadfasdfasdf"
+        }
+      },
+    "card":
+      {
+        "cardholder_ref": {
+          "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
+        },
+        "par":"peLpzDnEHdhiiWEtuhUgIbN{{CARDHOLDER_UNIQUE_KEY}}",
+        "pan":"KOnalFfwdrBXlZD",
+        "cvv":"123",
+        "expiration_month":12,
+        "expiration_year":24,
+        "name_on_card":"FirstName LastName",
+        "first_name":"FirstName",
+        "last_name":"LastName",
+        "address":
+          {
+            "cardholder_ref": {
+              "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
+            },
+            "first_name":"Switch",
+            "last_name":"Strivve",
+            "address1":"SGTClNSCCMqlfjuzTmJuepDyFgvWhlCMRycXlKGiRIooOJJkoXeObOcAwJMGeqjSDWfhTHobAWMimcCynMIQcvlBFSbMQlwUFyJ",
+            "address2":"AyFgoCTjCLXUQVylBAfkHJOtqkkKJjuaLHnmJpSctqBOQueIvciyAUPqYoFpkiAPlkGjgPuabhAPCHFPvaxciObOmIBvBUWpngD",
+            "city":"Seattle",
+            "subnational":"WA",
+            "postal_code":"98177",
+            "postal_other":"98177-0124",
+            "country":"USA",
+            "is_primary": true
+          }
+      },
+    "account":
+      {
+        "cardholder_ref": {
+          "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
+        },
+        "merchant_site_id":1,
+        "username":"bad_email",
+        "password":"good_password"
+      }
+  }
