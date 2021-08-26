@@ -8,11 +8,12 @@ This project is intended to be a proof of concept for the use of the CardSavr Ja
 1. Add the Java SDK as a dependency for this project
 2. Add credentials to the strivve_creds.json file
 3. Add this project as a dependency to you Mule project
+```xml
 <groupId>cs.muleConnector</groupId>
 <artifactId>mule-cardsavr-connector</artifactId>
 <version>1.0.0</version>
 <classifier>mule-plugin</classifier>
-
+```
 
 ## Example Operations
 
