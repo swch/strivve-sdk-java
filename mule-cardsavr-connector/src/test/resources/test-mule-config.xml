@@ -1,0 +1,19 @@
+<mule xmlns="http://www.mulesoft.org/schema/mule/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xmlns:cardsavr="http://www.mulesoft.org/schema/mule/cardsavr"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+          http://www.mulesoft.org/schema/mule/cardsavr http://www.mulesoft.org/schema/mule/cardsavr/current/mule-cardsavr.xsd">
+
+    <cardsavr:config name="config" configId="configId">
+        <cardsavr:connection requiredParameter="aValue" />
+    </cardsavr:config>
+
+    <flow name="sayHiFlow">
+        <cardsavr:say-hi person="MG"/>
+    </flow>
+
+    <flow name="retrieveInfoFlow">
+        <cardsavr:retrieve-info config-ref="config"/>
+    </flow>
+
+</mule>

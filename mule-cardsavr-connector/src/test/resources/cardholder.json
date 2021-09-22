@@ -1,0 +1,8 @@
+{"cardholder":
+    { 
+    	"cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
+        "custom_data" : {
+            "myguid": "asdfadfasdfasdf"
+	        }
+	}
+}
