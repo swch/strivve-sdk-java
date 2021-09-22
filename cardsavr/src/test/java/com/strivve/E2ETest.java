@@ -182,6 +182,7 @@ public class E2ETest {
                                 if (handleCredentialRequest(session, jobId, null)) {
                                     //nothing to do here, credential request is handled.
                                 } else if (msg.containsKey("termination_type")) {
+                                    t.cancel();
                                     latch.countDown();
                                 }
                             } // ignore type credential_request messaages
