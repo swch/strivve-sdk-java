@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
-import java.nio.channels.FileLockInterruptionException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -21,7 +20,6 @@ import javax.json.JsonValue;
 
 import com.strivve.CarsavrRESTException.Error;
 
-import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
@@ -56,6 +54,25 @@ public class E2ETest {
         this.session = CardsavrSession.createSession(testConfig.integratorName, testConfig.integratorKey, testConfig.cardsavrServer, testConfig.proxy, testConfig.proxyCreds);
         JsonObject obj = (JsonObject) session.login(testConfig.cardsavrCreds, null);
         assertTrue(obj.getInt("user_id") > 0);
+    }
+   
+    @Test
+    public void sessioinRestoreTest() {
+        try {
+            byte[] sessionObjects = session.serializeSessionObjects();
+            CardsavrSession session2 = CardsavrSession.createSession(testConfig.integratorName, testConfig.integratorKey, testConfig.cardsavrServer, testConfig.proxy, testConfig.proxyCreds);
+            session2.restore(sessionObjects);
+            try {
+                JsonValue response = session2.get("/merchant_sites", null, null);
+                assertEquals(25, ((JsonArray)response).size());
+            } catch (CarsavrRESTException e) {
+                e.printStackTrace(); assert(false);
+            }
+        } catch (IOException e) {
+            e.printStackTrace(); assert(false);
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace(); assert(false);
+        }
     }
 
     @Test
@@ -103,14 +120,36 @@ public class E2ETest {
     }
 
     @Test
-    public void jobPostTest() throws IOException, CarsavrRESTException, InterruptedException {
-        String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
-                .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
-        JsonObject jsonobj = Json.createReader(new StringReader(data)).read().asJsonObject();
+    public void jobPostJobTest() {
+        runJobTest("JOB");
+    }
+    
+    @Test
+    public void jobPostCardholderMessageTest() {
+        runJobTest("CARDHOLDER");
+    }
+
+    private void runJobTest(String type)  {
+
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
         headers.financialInsitution = "default";
-        JsonObject response = (JsonObject) session.post("/place_card_on_single_site_jobs", jsonobj, headers);
-        assertTrue("Place job should return a valid id", response.getInt("id") > 0);
+        JsonObject response = null;
+        try {
+            String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
+                .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
+            JsonObject jsonobj = Json.createReader(new StringReader(data)).read().asJsonObject();
+            response = (JsonObject) session.post("/place_card_on_single_site_jobs", jsonobj, headers);
+        } catch (CarsavrRESTException e) {
+            System.out.println(e.getRESTErrors()[0]);
+            assert(false); return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            assert(false); return;
+        }
+        int jobId = response.getInt("id");
+        int cardholderId = response.getInt("cardholder_id");
+        assertTrue("Place job should return a valid id", jobId > 0);
+        assertTrue("Place job should return a valid id", cardholderId > 0);
 
         final CountDownLatch latch = new CountDownLatch(1);
 
@@ -122,46 +161,50 @@ public class E2ETest {
             private int totalTime = 0;
 
             public void run() {
+
                 totalTime += delay;
-                int jobId = response.getInt("id");
-                CardsavrSession.APIHeaders headers = session.createHeaders();
-                headers.hydration = Json.createArrayBuilder().add("credential_requests").build();
 
                 try {
-                    JsonObject job = (JsonObject) session.get("/place_card_on_single_site_jobs", jobId, headers);
-                    String status = job.getString("status");
-                    if (!assertStatuses.contains(status)) {
-                        assertStatuses.add(status);
-                        System.out.println(status);
-                    }
-                    JsonArray arr = (JsonArray)job.get("credential_requests");
-                    if (arr != null && arr.size() == 1 && arr.getJsonObject(0).getString("envelope_id") != null) {
-
-                        headers = session.createHeaders();
-                        headers.envelopeId = arr.getJsonObject(0).getString("envelope_id");
-                        JsonObject newCreds = null;
-                        if (status.equals("PENDING_NEWCREDS")) {
-                            newCreds = Json.createObjectBuilder()
-                                .add("account", Json.createObjectBuilder()
-                                    .add("username", "good_email")
-                                    .add("password", "tfa")
-                                    .build())
-                                .build();
-                        } else if (status.equals("PENDING_TFA")) {
-                            newCreds = Json.createObjectBuilder()
-                                .add("account", Json.createObjectBuilder()
-                                    .add("tfa", "1234")
-                                    .build())
-                                .build();
-                            }
-                        JsonValue obj = session.put("/place_card_on_single_site_jobs", jobId, newCreds, headers);
-                    } else if (!job.get("completed_on").toString().equals("null")) {
-                        t.cancel();
-                        latch.countDown();
+                    String status = null;
+                    if (type.equals("CARDHOLDER")) {
+                        JsonArray messages = (JsonArray) session.get("/messages/cardholders/", cardholderId, null);
+                        Iterator<JsonValue> iter = messages.iterator();
+                        while (iter.hasNext()) {
+                            JsonObject json = (JsonObject)iter.next();    
+                            if (json.getString("type").equals("job_status")) {
+                                JsonObject msg = json.getJsonObject("message");
+                                status = msg.getString("status");
+                                if (!assertStatuses.contains(status)) {
+                                    assertStatuses.add(status);
+                                }
+                                int jobId = Integer.parseInt(json.getString("job_id"));
+                                //if we see a pending message, grab that job and deal with credential requests.
+                                if (handleCredentialRequest(session, jobId, null)) {
+                                    //nothing to do here, credential request is handled.
+                                } else if (msg.containsKey("termination_type")) {
+                                    latch.countDown();
+                                }
+                            } // ignore type credential_request messaages
+                        }
+                    } else if (type.equals("JOB")) {
+                        CardsavrSession.APIHeaders headers = session.createHeaders();
+                        headers.hydration = Json.createArrayBuilder().add("credential_requests").build();
+        
+                        JsonObject job = (JsonObject) session.get("/place_card_on_single_site_jobs", jobId, headers);
+                        status = job.getString("status");
+                        if (!assertStatuses.contains(status)) {
+                            assertStatuses.add(status);
+                        }
+                        if (handleCredentialRequest(session, jobId, job)) {
+                            //dealt with credential request
+                        } else if (!job.get("completed_on").toString().equals("null")) {
+                            t.cancel();
+                            latch.countDown();
+                        }
                     }
                     if (totalTime > 300000) {
                         throw new IOException("Task timed out after five minutes, exit.");
-                    } else if (totalTime > 60000 && status.equals("QUEUED")) {
+                    } else if (totalTime > 60000 && "QUEUED".equals(status)) {
                         throw new IOException("Task shouldn't be queued for more than one minute.");
                     }
                 } catch (IOException e) {
@@ -174,10 +217,50 @@ public class E2ETest {
                 }
             }
         }, 1000, delay); //wait one second, then wait five
-        latch.await();
-        assertEquals("Place job should finish with a status of SUCCESSFUL", "SUCCESSFUL", assertStatuses.get(assertStatuses.size() - 1));
-        assertTrue("Status entries length should be at least 5", assertStatuses.size() >= 5);
-        Thread.sleep(20000);
+        try {
+            latch.await();
+            assertEquals("Place job should finish with a status of SUCCESSFUL", "SUCCESSFUL", assertStatuses.get(assertStatuses.size() - 1));
+            assertTrue("Status entries length should be at least 5", assertStatuses.size() >= 5);
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            assert(false);
+        }
     }
+
+    private boolean handleCredentialRequest(CardsavrSession session, int jobId, JsonObject job) throws IOException, CarsavrRESTException {
+        
+        if (job == null) {
+            CardsavrSession.APIHeaders headers = session.createHeaders();
+            headers.hydration = Json.createArrayBuilder().add("credential_requests").build();
+            job = (JsonObject)session.get("/place_card_on_single_site_jobs/", jobId, headers);
+        }
+        
+        String status = job.getString("status");
+        JsonArray arr = (JsonArray)job.get("credential_requests");
+        if (arr != null && arr.size() == 1 && arr.getJsonObject(0).getString("envelope_id") != null) {
+            CardsavrSession.APIHeaders headers = session.createHeaders();
+            headers.envelopeId = arr.getJsonObject(0).getString("envelope_id");
+            JsonObject newCreds = null;
+            if (status.equals("PENDING_NEWCREDS")) {
+                newCreds = Json.createObjectBuilder()
+                    .add("account", Json.createObjectBuilder()
+                        .add("username", "good_email")
+                        .add("password", "tfa")
+                        .build())
+                    .build();
+            } else if (status.equals("PENDING_TFA")) {
+                newCreds = Json.createObjectBuilder()
+                    .add("account", Json.createObjectBuilder()
+                        .add("tfa", "1234")
+                        .build())
+                    .build();
+                }
+            session.put("/place_card_on_single_site_jobs", jobId, newCreds, headers);
+            return true;
+        }
+        return false;
+    }
+
 }
  

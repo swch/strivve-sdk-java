@@ -1,7 +1,11 @@
 package com.strivve;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -57,6 +61,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidKeySpecException;
+import java.io.Serializable;
 
 public class CardsavrSession {
 
@@ -75,13 +80,36 @@ public class CardsavrSession {
         return new CardsavrSession(integratorName, integratorKey, apiServer, proxyhost, creds);
     }
 
-    private String integratorName;
-    private SecretKey integratorKey;
-    private SecretKey sessionKey;
-    private JsonObject sessionTrace;
-    private String sessionToken;
-    CloseableHttpClient httpClient;
-    private HttpHost apiServer;
+    private transient String integratorName;
+    private transient SecretKey integratorKey;
+    transient CloseableHttpClient httpClient;
+    private transient HttpHost apiServer;
+    private SessionObjects sessionObjects = new SessionObjects();
+
+    private final class SessionObjects implements Serializable {
+        private JsonObject sessionTrace;
+        private SecretKey sessionKey;
+        private String sessionToken;
+
+        private void writeObject(java.io.ObjectOutputStream out) throws IOException {
+            out.writeObject(sessionTrace.toString());
+            out.writeObject(sessionKey);
+            out.writeObject(sessionToken);
+        }
+
+        private void readObject(java.io.ObjectInputStream in) throws IOException, ClassNotFoundException {
+            sessionTrace = Json.createReader(new StringReader((String)in.readObject())).readObject();
+            sessionKey = (SecretKey)in.readObject();
+            sessionToken = (String)in.readObject();
+        }
+    }
+
+    public byte[] serializeSessionObjects() throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(sessionObjects);
+        return baos.toByteArray();
+    }
 
     private CardsavrSession(String integratorName, String integratorKey, HttpHost apiServer, HttpHost proxyhost, UsernamePasswordCredentials proxyCreds)
             throws IOException {
@@ -120,11 +148,15 @@ public class CardsavrSession {
         return builder.build();
     }
 
+    public void restore(byte[] sessionObjects) throws ClassNotFoundException, IOException {
+        this.sessionObjects = (SessionObjects)(new ObjectInputStream(new ByteArrayInputStream(sessionObjects))).readObject();
+    }
+
     public JsonObject login(UsernamePasswordCredentials cardsavrCreds, JsonObject trace) throws IOException,
             CarsavrRESTException {
         
         // Trace key can be overridden, but almost always starts with the application username
-        this.sessionTrace = trace != null ? trace : Json.createObjectBuilder().add("key", integratorName).build();
+        this.sessionObjects.sessionTrace = trace != null ? trace : Json.createObjectBuilder().add("key", integratorName).build();
 
         try {
             // generate a passwordProof based on the integratorKey
@@ -145,12 +177,12 @@ public class CardsavrSession {
                 .build();
             JsonObject loginResponse = (JsonObject)post("/session/login", body, null);
             
-            this.sessionToken = loginResponse.getString("session_token");
+            this.sessionObjects.sessionToken = loginResponse.getString("session_token");
             String base64ServerPublicKey = loginResponse.getString("server_public_key");
             ECPublicKey serverPublicKey = UncompressedPublicKeys.decodeUncompressedECPublicKey(
                     ((ECPublicKey) kp.getPublic()).getParams(), Base64.getDecoder().decode(base64ServerPublicKey));
 
-            this.sessionKey = Encryption.generateECSecretKey(serverPublicKey, kp.getPrivate());
+            this.sessionObjects.sessionKey = Encryption.generateECSecretKey(serverPublicKey, kp.getPrivate());
 
             return loginResponse;
         } catch (IOException e) {
@@ -229,9 +261,9 @@ public class CardsavrSession {
             if (trace != null)
                 request.setHeader("x-cardsavr-trace", trace.toString());
             if (safeKey != null)
-                request.setHeader("x-cardsavr-cardholder-safe-key", Encryption.encryptAES256(safeKey, sessionKey));
+                request.setHeader("x-cardsavr-cardholder-safe-key", Encryption.encryptAES256(safeKey, sessionObjects.sessionKey));
             if (newSafeKey != null)
-                request.setHeader("x-cardsavr-new-cardholder-safe-key", Encryption.encryptAES256(newSafeKey, sessionKey));
+                request.setHeader("x-cardsavr-new-cardholder-safe-key", Encryption.encryptAES256(newSafeKey, sessionObjects.sessionKey));
             if (financialInsitution != null)
                 request.setHeader("x-cardsavr-financial-institution", financialInsitution);
             if (envelopeId != null)
@@ -249,7 +281,7 @@ public class CardsavrSession {
             String requestSigning = request.getURI().toURL().getFile() + authorization + nonce;
 
              try {
-                SecretKey encryptionKey = sessionKey != null ? sessionKey : integratorKey;
+                SecretKey encryptionKey = sessionObjects.sessionKey != null ? sessionObjects.sessionKey : integratorKey;
 
                 if (jsonBody != null && (request instanceof HttpEntityEnclosingRequestBase)) {
                     String encryptedBody = Encryption.encryptAES256(jsonBody.toString(), encryptionKey);
@@ -262,13 +294,13 @@ public class CardsavrSession {
                     request.setHeader("Content-type", "application/json");
                 } 
     
-                if (sessionToken != null) {
-                    request.setHeader("x-cardsavr-session-jwt", sessionToken);
+                if (sessionObjects.sessionToken != null) {
+                    request.setHeader("x-cardsavr-session-jwt", sessionObjects.sessionToken);
                 }
                 String signature = Encryption.hmacSign(requestSigning.getBytes(), encryptionKey.getEncoded());                
                 String version = getClass().getPackage().getImplementationVersion();
                 request.setHeader("x-cardsavr-client-application", integratorName + " Strivve Java SDK v" + version);
-                request.setHeader("x-cardsavr-trace", sessionTrace.toString());
+                request.setHeader("x-cardsavr-trace", sessionObjects.sessionTrace.toString());
                 request.setHeader("x-cardsavr-nonce", nonce);
                 request.setHeader("x-cardsavr-authorization", authorization);
                 request.setHeader("x-cardsavr-signature", signature);
