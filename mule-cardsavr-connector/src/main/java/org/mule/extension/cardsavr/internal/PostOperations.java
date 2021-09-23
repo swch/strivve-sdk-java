@@ -16,7 +16,6 @@ import org.apache.logging.log4j.Logger;
 import org.mule.runtime.extension.api.annotation.Alias;
 import org.mule.runtime.extension.api.annotation.param.Connection;
 import org.mule.runtime.extension.api.annotation.param.MediaType;
-import org.mule.runtime.extension.api.annotation.param.Optional;
 
 /**
  * This class is a container for operations.
