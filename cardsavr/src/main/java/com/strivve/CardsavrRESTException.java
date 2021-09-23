@@ -6,7 +6,7 @@ import javax.json.JsonValue;
 import java.util.*;
 import java.io.Serializable;
 
-class CardsavrRESTException extends Exception {
+public class CardsavrRESTException extends Exception {
 
     private static final long serialVersionUID = 968681638809960414L;
 
