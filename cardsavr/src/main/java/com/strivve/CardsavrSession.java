@@ -153,7 +153,7 @@ public class CardsavrSession {
     }
 
     public JsonObject login(UsernamePasswordCredentials cardsavrCreds, JsonObject trace) throws IOException,
-            CarsavrRESTException {
+            CardsavrRESTException {
         
         // Trace key can be overridden, but almost always starts with the application username
         this.sessionObjects.sessionTrace = trace != null ? trace : Json.createObjectBuilder().add("key", integratorName).build();
@@ -189,36 +189,36 @@ public class CardsavrSession {
             throw e;
         } catch (NoSuchAlgorithmException | InvalidKeySpecException | InvalidKeyException | NoSuchProviderException
                 | InvalidAlgorithmParameterException e) {
-            throw new CarsavrEncryptionException(e.getMessage(), e);
+            throw new CardsavrEncryptionException(e.getMessage(), e);
         }
     }
 
-    public JsonObject end() throws IOException, CarsavrRESTException {
+    public JsonObject end() throws IOException, CardsavrRESTException {
         return (JsonObject)get("/session/end", null, null);
     }
 
     public JsonValue get(String path, List<NameValuePair> filters, APIHeaders headers) throws IOException,
-            CarsavrRESTException {
+            CardsavrRESTException {
         return client.apiRequest(new HttpGet(makeURLString(path, filters)), null, headers);
     }
 
-    public JsonValue get(String path, int id, APIHeaders headers) throws IOException, CarsavrRESTException {
+    public JsonValue get(String path, int id, APIHeaders headers) throws IOException, CardsavrRESTException {
         return client.apiRequest(new HttpGet(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), null, headers);
     }
 
-    public JsonValue post(String path, JsonObject body, APIHeaders headers) throws IOException, CarsavrRESTException {
+    public JsonValue post(String path, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
         return client.apiRequest(new HttpPost(makeURLString(path, null)), body, headers);
     }
 
-    public JsonValue put(String path, List<NameValuePair> filters, JsonObject body, APIHeaders headers) throws IOException, CarsavrRESTException {
+    public JsonValue put(String path, List<NameValuePair> filters, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
         return client.apiRequest(new HttpPut(makeURLString(path, filters)), body, headers);
     }
 
-    public JsonValue put(String path, int id, JsonObject body, APIHeaders headers) throws IOException, CarsavrRESTException {
+    public JsonValue put(String path, int id, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
         return client.apiRequest(new HttpPut(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), body, headers);
     }
 
-    public JsonValue delete(String path, int id, APIHeaders headers) throws IOException, CarsavrRESTException {
+    public JsonValue delete(String path, int id, APIHeaders headers) throws IOException, CardsavrRESTException {
         return client.apiRequest(new HttpDelete(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), null, headers);
     }
 
@@ -274,7 +274,7 @@ public class CardsavrSession {
     private final class CardsavrClient {
 
         private JsonValue apiRequest(HttpUriRequest request, JsonObject jsonBody, APIHeaders headers)
-                throws IOException, CarsavrRESTException {
+                throws IOException, CardsavrRESTException {
 
             String authorization = "SWCH-HMAC-SHA256 Credentials=" + integratorName;
             String nonce = Long.toString(new Date().getTime());
@@ -335,7 +335,7 @@ public class CardsavrSession {
                         } else {
                             JsonObject obj = jsonst.asJsonObject();
                             if (obj.getJsonArray("_errors") != null) {
-                                throw new CarsavrRESTException(
+                                throw new CardsavrRESTException(
                                     response.getStatusLine() + " - error calling " + request.getURI().getPath(), 
                                     obj.getJsonArray("_errors"), obj);
                             }
@@ -351,7 +351,7 @@ public class CardsavrSession {
                      NoSuchPaddingException | InvalidAlgorithmParameterException | 
                      IllegalBlockSizeException | BadPaddingException e) {
                 e.printStackTrace();
-                throw new CarsavrEncryptionException(e.getMessage(), e);
+                throw new CardsavrEncryptionException(e.getMessage(), e);
             }
         }
     }

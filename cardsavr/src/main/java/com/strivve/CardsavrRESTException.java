@@ -6,7 +6,7 @@ import javax.json.JsonValue;
 import java.util.*;
 import java.io.Serializable;
 
-class CarsavrRESTException extends Exception {
+class CardsavrRESTException extends Exception {
 
     private static final long serialVersionUID = 968681638809960414L;
 
@@ -14,7 +14,7 @@ class CarsavrRESTException extends Exception {
 
     private final transient JsonValue rawResponse;
 
-    public CarsavrRESTException(String message, JsonArray errorsArray, JsonValue response) {
+    public CardsavrRESTException(String message, JsonArray errorsArray, JsonValue response) {
         super(message);
         this.rawResponse = response;
 

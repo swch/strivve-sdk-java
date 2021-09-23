@@ -18,7 +18,7 @@ import javax.json.JsonObject;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 
-import com.strivve.CarsavrRESTException.Error;
+import com.strivve.CardsavrRESTException.Error;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
@@ -49,7 +49,7 @@ public class E2ETest {
     }
 
     @Before
-    public void loginTest() throws IOException, CarsavrRESTException {
+    public void loginTest() throws IOException, CardsavrRESTException {
 
         this.session = CardsavrSession.createSession(testConfig.integratorName, testConfig.integratorKey, testConfig.cardsavrServer, testConfig.proxy, testConfig.proxyCreds);
         JsonObject obj = (JsonObject) session.login(testConfig.cardsavrCreds, null);
@@ -65,7 +65,7 @@ public class E2ETest {
             try {
                 JsonValue response = session2.get("/merchant_sites", null, null);
                 assertEquals(25, ((JsonArray)response).size());
-            } catch (CarsavrRESTException e) {
+            } catch (CardsavrRESTException e) {
                 e.printStackTrace(); assert(false);
             }
         } catch (IOException e) {
@@ -76,13 +76,13 @@ public class E2ETest {
     }
 
     @Test
-    public void selectMerchantsTest() throws IOException, CarsavrRESTException {
+    public void selectMerchantsTest() throws IOException, CardsavrRESTException {
         JsonValue response = this.session.get("/merchant_sites", null, null);
         assertEquals(25, ((JsonArray) response).size());
     }
 
     @Test
-    public void selectMerchantsPaginationTest() throws IOException, CarsavrRESTException {
+    public void selectMerchantsPaginationTest() throws IOException, CardsavrRESTException {
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
         headers.paging = Json.createObjectBuilder().add("page", 1).add("page_length", 5).build();
         JsonValue response = session.get("/merchant_sites", null, headers);
@@ -90,7 +90,7 @@ public class E2ETest {
     }
 
     @Test
-    public void selectMerchantsFilterTest() throws IOException, CarsavrRESTException {
+    public void selectMerchantsFilterTest() throws IOException, CardsavrRESTException {
         List<NameValuePair> filters = new ArrayList<>(1);
         filters.add(new BasicNameValuePair("tags", "canada"));
         JsonValue response = session.get("/merchant_sites", filters, null);
@@ -100,7 +100,7 @@ public class E2ETest {
     }
 
     @Test
-    public void selectNonExistentMerchantSite() throws IOException, CarsavrRESTException {
+    public void selectNonExistentMerchantSite() throws IOException, CardsavrRESTException {
         try {
             session.get("/merchant_sites/0", null, null);
         } catch (FileNotFoundException e) {
@@ -109,10 +109,10 @@ public class E2ETest {
     }
 
     @Test
-    public void filterError() throws IOException, CarsavrRESTException {
+    public void filterError() throws IOException, CardsavrRESTException {
         List<NameValuePair> filters = new ArrayList<>(1);
         filters.add(new BasicNameValuePair("bad_filter", "canada"));
-        CarsavrRESTException exception = assertThrows(CarsavrRESTException.class,
+        CardsavrRESTException exception = assertThrows(CardsavrRESTException.class,
                 () -> session.get("/merchant_sites", filters, null));
         Error[] errors = exception.getRESTErrors();
         assertEquals(1, errors.length);
@@ -139,7 +139,7 @@ public class E2ETest {
                 .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
             JsonObject jsonobj = Json.createReader(new StringReader(data)).read().asJsonObject();
             response = (JsonObject) session.post("/place_card_on_single_site_jobs", jsonobj, headers);
-        } catch (CarsavrRESTException e) {
+        } catch (CardsavrRESTException e) {
             System.out.println(e.getRESTErrors()[0]);
             assert(false); return;
         } catch (IOException e) {
@@ -211,7 +211,7 @@ public class E2ETest {
                 } catch (IOException e) {
                     e.printStackTrace();
                     latch.countDown();
-                } catch (CarsavrRESTException e) {
+                } catch (CardsavrRESTException e) {
                     System.out.println(e.getRESTErrors()[0]);
                     e.printStackTrace();
                     latch.countDown();
@@ -229,7 +229,7 @@ public class E2ETest {
         }
     }
 
-    private boolean handleCredentialRequest(CardsavrSession session, int jobId, JsonObject job) throws IOException, CarsavrRESTException {
+    private boolean handleCredentialRequest(CardsavrSession session, int jobId, JsonObject job) throws IOException, CardsavrRESTException {
         
         if (job == null) {
             CardsavrSession.APIHeaders headers = session.createHeaders();
