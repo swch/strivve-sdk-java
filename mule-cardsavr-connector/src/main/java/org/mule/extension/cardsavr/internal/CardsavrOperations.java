@@ -11,12 +11,14 @@ import javax.json.JsonValue;
 
 import java.util.List;
 
+import org.apache.http.NameValuePair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.mule.runtime.extension.api.annotation.Alias;
 import org.mule.runtime.extension.api.annotation.param.Connection;
 import org.mule.runtime.extension.api.annotation.param.MediaType;
+
 
 public class CardsavrOperations {
 	
@@ -32,7 +34,7 @@ public class CardsavrOperations {
 		String merchantPath = "/merchant_sites";
 		JsonValue getMerchants = null;
 		String response = null;
-		List filters = null;
+		List<NameValuePair> filters = null;
 		  
 		try {
 			getMerchants = connection.get(merchantPath, filters, null);
