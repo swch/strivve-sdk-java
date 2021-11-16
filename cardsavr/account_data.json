@@ -1,0 +1,12 @@
+{
+    "cardholder":
+    { 
+        "cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
+        "custom_data" : {
+            "myguid": "asdfadfasdfasdf"
+        }
+    },
+    "merchant_site_id":1,
+    "username":"bad_email",
+    "password":"good_password"
+}
