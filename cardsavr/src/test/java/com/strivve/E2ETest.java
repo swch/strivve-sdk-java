@@ -10,6 +10,7 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import javax.json.Json;
@@ -120,11 +121,51 @@ public class E2ETest {
     }
 
     @Test
+    public void createAndUpdateAccount() throws IOException, CardsavrRESTException, NoSuchAlgorithmException {
+
+        CardsavrSession.APIHeaders headers = this.session.createHeaders();
+        String random = RandomStringUtils.random(6, true, true);
+        headers.safeKey = Base64.getEncoder().encodeToString(Encryption.sha256Hash(random.getBytes()));
+        JsonObject response = null;
+        try {
+            String data = new String(Files.readAllBytes(Paths.get("./account_data.json")), StandardCharsets.UTF_8)
+                .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", random);
+            JsonObject jsonobj = Json.createReader(new StringReader(data)).read().asJsonObject();
+            response = (JsonObject) session.post("/cardsavr_accounts", jsonobj, headers);
+        } catch (CardsavrRESTException e) {
+            System.out.println(e.getRESTErrors()[0]);
+            assert(false); return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            assert(false); return;
+        }
+        int accountId = response.getInt("id");
+        int cardholderId = response.getInt("cardholder_id");
+        assertTrue("Create account should return a valid id", accountId > 0);
+        assertTrue("Create account should return a valid cardholder id", cardholderId > 0);
+
+        try {
+            JsonObject obj = Json.createObjectBuilder()
+                .add("customer_key", response.getString("customer_key"))
+                .add("username", "good_emaiil")
+                .add("password", "tfa").build();
+            response = (JsonObject) session.put("/cardsavr_accounts", null, obj, headers);
+        } catch (CardsavrRESTException e) {
+            System.out.println(e.getRESTErrors()[0]);
+            assert(false); return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            assert(false); return;
+        }
+        assertTrue("Object was not updated", !response.getString("last_updated_on").equals(response.getString("created_on")));
+    }
+
+    //@Test
     public void jobPostJobTest() {
         runJobTest("JOB");
     }
     
-    @Test
+    //@Test
     public void jobPostCardholderMessageTest() {
         runJobTest("CARDHOLDER");
     }
