@@ -1,6 +1,6 @@
 {
     "status": "REQUESTED",
-    "type": "TURBO_MODE",
+    "type": "CARD_PLACEMENT",
     "cardholder":
       { 
         "cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
