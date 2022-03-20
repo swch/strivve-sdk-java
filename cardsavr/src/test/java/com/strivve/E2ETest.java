@@ -141,6 +141,7 @@ public class E2ETest {
         }
         int accountId = response.getInt("id");
         int cardholderId = response.getInt("cardholder_id");
+        int merchantSiteId = response.getInt("merchant_site_id");
         assertTrue("Create account should return a valid id", accountId > 0);
         assertTrue("Create account should return a valid cardholder id", cardholderId > 0);
 
@@ -148,6 +149,8 @@ public class E2ETest {
             JsonObject obj = Json.createObjectBuilder()
                 .add("customer_key", response.getString("customer_key"))
                 .add("username", "good_emaiil")
+                .add("cardholder_id", cardholderId)
+                .add("merchant_site_id", merchantSiteId)
                 .add("password", "tfa").build();
             response = (JsonObject) session.put("/cardsavr_accounts", null, obj, headers);
         } catch (CardsavrRESTException e) {
