@@ -20,8 +20,20 @@ public class CardsavrRESTException extends Exception {
 
         List<Error> list = new LinkedList<>();
         errorsArray.forEach(it -> {
-            JsonObject obj = it.asJsonObject();
-            list.add(new Error(obj.getString("name"), obj.getString("message"), obj.getString("property")));
+            JsonObject topError = it.asJsonObject();
+            list.add(new Error(topError.getString("name"), topError.getString("message"), topError.getString("property"), "top"));
+        });
+        JsonObject obj = response.asJsonObject();
+        obj.forEach((key, value) -> {
+            if (value instanceof JsonObject) {
+                JsonArray subErrors = ((JsonObject)value).getJsonArray("_errors");
+                if (subErrors != null) {
+                    subErrors.forEach(it -> {
+                        JsonObject subError = it.asJsonObject();
+                        list.add(new Error(subError.getString("name"), subError.getString("message"), subError.getString("property"), key));
+                    });
+                }
+            }
         });
         this.errors = list.toArray(new Error[list.size()]);
     }
@@ -34,21 +46,39 @@ public class CardsavrRESTException extends Exception {
         return rawResponse;
     }
 
-    class Error implements Serializable {
+    public class Error implements Serializable {
 
         private static final long serialVersionUID = 820230784671482138L;
         private String name;
         private String message;
         private String property;
+        private String entity;
         
-        public Error(String name, String message, String property) {
+        public Error(String name, String message, String property, String entity) {
             this.name = name;
             this.message = message;
             this.property = property;
+            this.entity = entity;
         }
 
         public String toString() {
-            return "Name: " + name + ", Message: " + message +  ", Property: " + property;
+            return "Name: " + name + ", Message: " + message +  ", Property: " + property + ", SubEntity: " + entity;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public String getProperty() {
+            return property;
+        }
+
+        public String getEntity() {
+            return entity;
         }
     }
 

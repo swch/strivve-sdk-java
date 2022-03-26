@@ -110,6 +110,29 @@ public class E2ETest {
     }
 
     @Test
+    public void badCardRequestTest() throws IOException, CardsavrRESTException {
+        try {
+            String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
+                .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
+            data = data.replaceAll("\"subnational\":\"[\\w\\.\\- ]+\",", "");
+            JsonObject jsonobj = Json.createReader(new StringReader(data)).read().asJsonObject();
+            JsonObject card = jsonobj.getJsonObject("card");
+            session.put("/cardsavr_cards", null, card, this.session.createHeaders());
+        } catch (CardsavrRESTException e) {
+            assertTrue(e.getMessage().indexOf("400") != -1);
+            assertTrue(e.getRESTErrors().length == 2);
+            Arrays.stream(e.getRESTErrors()).forEach(error -> {
+                if (error.getEntity().equals("top")) {
+                    assertTrue(error.getName().equals("Sub-Entity Validation Failure"));
+                } else if (error.getEntity().equals("address")) {
+                    assertTrue(error.getProperty().equals("subnational"));
+                }
+            });
+
+        }
+    }
+
+    @Test
     public void filterError() throws IOException, CardsavrRESTException {
         List<NameValuePair> filters = new ArrayList<>(1);
         filters.add(new BasicNameValuePair("bad_filter", "canada"));
@@ -117,7 +140,7 @@ public class E2ETest {
                 () -> session.get("/merchant_sites", filters, null));
         Error[] errors = exception.getRESTErrors();
         assertEquals(1, errors.length);
-        assertTrue(errors[0].toString().endsWith("Property: bad_filter"));
+        assertTrue(errors[0].toString().indexOf("Property: bad_filter") != -1);
     }
 
     @Test
@@ -163,12 +186,12 @@ public class E2ETest {
         assertTrue("Object was not updated", !response.getString("last_updated_on").equals(response.getString("created_on")));
     }
 
-    //@Test
+    @Test
     public void jobPostJobTest() {
         runJobTest("JOB");
     }
     
-    //@Test
+    @Test
     public void jobPostCardholderMessageTest() {
         runJobTest("CARDHOLDER");
     }
@@ -221,7 +244,8 @@ public class E2ETest {
                                 if (!assertStatuses.contains(status)) {
                                     assertStatuses.add(status);
                                 }
-                                int jobId = Integer.parseInt(json.getString("job_id"));
+                                System.out.println(status);
+                                int jobId = json.getInt("job_id");
                                 //if we see a pending message, grab that job and deal with credential requests.
                                 if (handleCredentialRequest(session, jobId, null)) {
                                     //nothing to do here, credential request is handled.
