@@ -7,7 +7,7 @@ Strivve requires TLS for all API communication, but also encrypts payloads and r
 
 ## Development
 
-The package was developed in VS Code uisng the Maven plugins, and has a set of cryptography unit tests and integration tests.  The first step is to copy the [creds.sample.json](https://github.com/swch/strivve-sdk-java/blob/main/cardsavr/creds.sample.json) to a creds.json file, and attain credentials to a sandbox by contacting developer-support@strivve.com.  You will receive five impportant pieces of information:
+The package was developed in VS Code uisng the Maven plugins, and has a set of cryptography unit tests and integration tests.  The first step is to copy the [creds.sample.json](https://github.com/swch/strivve-sdk-java/blob/main/cardsavr/creds.sample.json) to a strivve_creds.json file, and attain credentials to a sandbox by contacting developer-support@strivve.com.  You will receive five impportant pieces of information:
 
 - API Server -- The cardsavr server hostname, and https endpoint.
 - Integrator name -- To encrypt payloads, the client provides the integrator name to notify the server which form of encyrptin is used. 

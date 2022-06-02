@@ -44,7 +44,9 @@
           "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
         },
         "merchant_site_id":1,
-        "username":"bad_email",
-        "password":"good_password"
+        "account_identification" : {
+          "username":"bad_email",
+          "password":"good_password"
+        }
       }
   }

@@ -2,8 +2,13 @@ package com.strivve;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -56,7 +61,7 @@ public class E2ETest {
         JsonObject obj = (JsonObject) session.login(testConfig.cardsavrCreds, null);
         assertTrue(obj.getInt("user_id") > 0);
     }
-   
+
     @Test
     public void sessioinRestoreTest() {
         try {
@@ -261,6 +266,7 @@ public class E2ETest {
         
                         JsonObject job = (JsonObject) session.get("/place_card_on_single_site_jobs", jobId, headers);
                         status = job.getString("status");
+                        System.out.println(status);
                         if (!assertStatuses.contains(status)) {
                             assertStatuses.add(status);
                         }
@@ -314,8 +320,10 @@ public class E2ETest {
             if (status.equals("PENDING_NEWCREDS")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
-                        .add("username", "good_email")
-                        .add("password", "tfa")
+                        .add("account_identification", Json.createObjectBuilder()
+                            .add("username", "good_email")
+                            .add("password", "tfa")
+                            .build())
                         .build())
                     .build();
             } else if (status.equals("PENDING_TFA")) {
