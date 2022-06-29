@@ -2,13 +2,8 @@ package com.strivve;
 
 import static org.junit.Assert.*;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.io.StringReader;
 import java.net.MalformedURLException;
 import java.net.URISyntaxException;
@@ -33,6 +28,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -191,11 +187,13 @@ public class E2ETest {
         assertTrue("Object was not updated", !response.getString("last_updated_on").equals(response.getString("created_on")));
     }
 
+    @Ignore
     @Test
     public void jobPostJobTest() {
         runJobTest("JOB");
     }
     
+    @Ignore
     @Test
     public void jobPostCardholderMessageTest() {
         runJobTest("CARDHOLDER");
