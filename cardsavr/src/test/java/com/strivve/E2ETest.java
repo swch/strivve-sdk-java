@@ -28,7 +28,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.http.NameValuePair;
 import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -187,13 +186,11 @@ public class E2ETest {
         assertTrue("Object was not updated", !response.getString("last_updated_on").equals(response.getString("created_on")));
     }
 
-    @Ignore
     @Test
     public void jobPostJobTest() {
         runJobTest("JOB");
     }
     
-    @Ignore
     @Test
     public void jobPostCardholderMessageTest() {
         runJobTest("CARDHOLDER");
