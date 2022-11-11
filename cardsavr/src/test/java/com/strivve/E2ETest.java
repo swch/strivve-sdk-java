@@ -317,7 +317,7 @@ public class E2ETest {
             headers.envelopeId = arr.getJsonObject(0).getString("envelope_id");
             JsonObject newCreds = null;
             String messageType = arr.getJsonObject(0).getString("type");
-            if (messageType.equals("initial_account_identification") || messageType.equals("crerdential_request")) {
+            if (messageType.equals("credential_request") || messageType.equals("initial_account_identification")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
                         .add("account_identification", Json.createObjectBuilder()
