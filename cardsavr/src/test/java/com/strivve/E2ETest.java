@@ -306,13 +306,13 @@ public class E2ETest {
             job = (JsonObject)session.get("/place_card_on_single_site_jobs/", jobId, headers);
         }
         
-        String status = job.getString("status");
         JsonArray arr = (JsonArray)job.get("credential_requests");
         if (arr != null && arr.size() == 1 && arr.getJsonObject(0).getString("envelope_id") != null) {
             CardsavrSession.APIHeaders headers = session.createHeaders();
             headers.envelopeId = arr.getJsonObject(0).getString("envelope_id");
             JsonObject newCreds = null;
-            if (status.equals("PENDING_NEWCREDS")) {
+            String messageType = arr.getJsonObject(0).getString("type");
+            if (messageType.equals("credential_request") || messageType.equals("initial_account_identification")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
                         .add("account_identification", Json.createObjectBuilder()
@@ -321,7 +321,7 @@ public class E2ETest {
                             .build())
                         .build())
                     .build();
-            } else if (status.equals("PENDING_TFA")) {
+            } else if (messageType.startsWith("tfa")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
                         .add("tfa", "1234")
