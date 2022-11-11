@@ -188,22 +188,27 @@ public class E2ETest {
 
     @Test
     public void jobPostJobTest() {
-        runJobTest("JOB");
+        runJobTest("JOB", true);
     }
     
     @Test
     public void jobPostCardholderMessageTest() {
-        runJobTest("CARDHOLDER");
+        runJobTest("CARDHOLDER", false);
     }
 
-    private void runJobTest(String type)  {
+    private void runJobTest(String type, boolean emptyCreds)  {
 
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
-        headers.financialInsitution = "default";
+
+        headers.hydration = Json.createArrayBuilder().add("credential_requests").build();
         JsonObject response = null;
         try {
             String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
                 .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
+            // this tests quick start
+            if (emptyCreds) {
+                data = data.replace("account_identification", "account_identification1");
+            }
             JsonObject jsonobj = Json.createReader(new StringReader(data)).read().asJsonObject();
             response = (JsonObject) session.post("/place_card_on_single_site_jobs", jsonobj, headers);
         } catch (CardsavrRESTException e) {
@@ -306,13 +311,13 @@ public class E2ETest {
             job = (JsonObject)session.get("/place_card_on_single_site_jobs/", jobId, headers);
         }
         
-        String status = job.getString("status");
         JsonArray arr = (JsonArray)job.get("credential_requests");
         if (arr != null && arr.size() == 1 && arr.getJsonObject(0).getString("envelope_id") != null) {
             CardsavrSession.APIHeaders headers = session.createHeaders();
             headers.envelopeId = arr.getJsonObject(0).getString("envelope_id");
             JsonObject newCreds = null;
-            if (status.equals("PENDING_NEWCREDS")) {
+            String messageType = arr.getJsonObject(0).getString("type");
+            if (messageType.equals("initial_account_identification") || messageType.equals("crerdential_request")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
                         .add("account_identification", Json.createObjectBuilder()
@@ -321,7 +326,7 @@ public class E2ETest {
                             .build())
                         .build())
                     .build();
-            } else if (status.equals("PENDING_TFA")) {
+            } else if (messageType.startsWith("tfa")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
                         .add("tfa", "1234")
