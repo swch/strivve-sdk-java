@@ -1,6 +1,6 @@
 {
     "status": "REQUESTED",
-    "type": "CARD_PLACEMENT",
+    "type_override1": "RPA_LOOPBACK:CARD_PLACEMENT",
     "cardholder":
       { 
         "cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
