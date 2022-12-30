@@ -312,10 +312,10 @@ public class E2ETest {
             headers.envelopeId = arr.getJsonObject(0).getString("envelope_id");
             JsonObject newCreds = null;
             String messageType = arr.getJsonObject(0).getString("type");
-            if (messageType.equals("credential_request") || messageType.equals("initial_account_identification")) {
+            if (messageType.equals("credential_request") || messageType.equals("initial_account_link")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
-                        .add("account_identification", Json.createObjectBuilder()
+                        .add("account_link", Json.createObjectBuilder()
                             .add("username", "good_email")
                             .add("password", "tfa")
                             .build())
