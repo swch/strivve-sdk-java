@@ -25,6 +25,7 @@ public class TestConfig {
     UsernamePasswordCredentials cardsavrCreds;
     HttpHost proxy;
     UsernamePasswordCredentials proxyCreds;
+    String queueNameOverride;
 
     public static TestConfig getTestConfig() throws FileNotFoundException, MalformedURLException, URISyntaxException {
 
@@ -33,7 +34,7 @@ public class TestConfig {
         
         //either load up the config from the docker local file for running the pr-tester
         if (f.exists()) {
-            JsonReader reader = Json.createReader(new FileInputStream("docker.local.json"));
+            JsonReader reader = Json.createReader(new FileInputStream(f));
             JsonArray config = reader.readArray();
             
             Map<String, String> values = config
@@ -48,6 +49,8 @@ public class TestConfig {
                 values.get("testing/credentials/primary/user/username"), 
                 values.get("testing/credentials/primary/user/password"));
             tc.integratorKey = values.get("testing/credentials/primary/integrator/key");
+            // to ensure that all jobs get queued propertly
+            tc.queueNameOverride = values.get("cardupdatr_ux/queue_name_override");
         //or simply use the creds file detailed in the creds.sample.json
         } else {
             JsonReader reader = Json.createReader(new FileInputStream("strivve_creds.json"));

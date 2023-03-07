@@ -16,6 +16,7 @@ import java.util.*;
 import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
+import javax.json.JsonObjectBuilder;
 import javax.json.JsonString;
 import javax.json.JsonValue;
 
@@ -196,6 +197,14 @@ public class E2ETest {
         runJobTest("CARDHOLDER");
     }
 
+    private JsonObject insertValue(JsonObject source, String key, String value) {
+        JsonObjectBuilder builder = Json.createObjectBuilder();
+        builder.add(key, value);
+        source.entrySet().
+                forEach(e -> builder.add(e.getKey(), e.getValue()));
+        return builder.build();
+    }
+
     private void runJobTest(String type)  {
 
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
@@ -205,7 +214,11 @@ public class E2ETest {
             String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)
                 .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
             JsonObject jsonobj = Json.createReader(new StringReader(data)).read().asJsonObject();
+            if (testConfig.queueNameOverride != null) {
+                jsonobj = insertValue(jsonobj, "queue_name_override", testConfig.queueNameOverride);
+            };
             response = (JsonObject) session.post("/place_card_on_single_site_jobs", jsonobj, headers);
+            
         } catch (CardsavrRESTException e) {
             System.out.println(e.getRESTErrors()[0]);
             assert(false); return;
@@ -324,7 +337,9 @@ public class E2ETest {
             } else if (messageType.startsWith("tfa")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
-                        .add("tfa", "1234")
+                        .add("account_link", Json.createObjectBuilder()
+                            .add("tfa", "1234")
+                            .build())
                         .build())
                     .build();
                 }
