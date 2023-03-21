@@ -318,16 +318,34 @@ public class CardsavrSession {
                     throw new SecurityException(response.getStatusLine() + " " + request.getURI().toURL().getFile());
                 }
 
+                try {
+                    authorization = response.getFirstHeader("x-cardsavr-authorization").getValue();
+                    nonce = response.getFirstHeader("x-cardsavr-nonce").getValue();
+                    signature = response.getFirstHeader("x-cardsavr-signature").getValue();
+                } catch (NullPointerException e) {
+                    throw new CardsavrRESTException(
+                        "Missing signature/nonce/authorization header - error calling " + request.getURI().getPath(), 
+                        null, null);
+                }
+                requestSigning = request.getURI().toURL().getFile() + authorization + nonce;
+
                 String result = EntityUtils.toString(response.getEntity());
                 if (result.length() > 0) {
                     String body;
                     try (JsonReader reader = Json.createReader(new StringReader(result))) {
                         JsonStructure jsonst = reader.read();
-                        JsonObject jsonobj =jsonst.asJsonObject();
-                        String encryptedBody = jsonobj.getString("encrypted_body");
+                        requestSigning += jsonst.toString();
+                        String encryptedBody = jsonst.asJsonObject().getString("encrypted_body");
                         body = Encryption.decryptAES256(encryptedBody, encryptionKey);
                     }
-    
+
+                    String compSignature = Encryption.hmacSign(requestSigning.getBytes(), encryptionKey.getEncoded());
+                    if (signature != null && !compSignature.equals(signature)) {
+                        throw new CardsavrRESTException(
+                            "Invalid signature header: " + signature + " - error calling " + request.getURI().getPath(), 
+                            null, null);
+                    }
+                    
                     try (JsonReader reader = Json.createReader(new StringReader(body))) {
                         JsonStructure jsonst = reader.read();
                         if (jsonst.getValueType() == ValueType.ARRAY) {
