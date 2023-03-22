@@ -59,6 +59,7 @@ import java.security.KeyPair;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
+import java.security.SignatureException;
 import java.security.interfaces.ECPublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.io.Serializable;
@@ -276,28 +277,28 @@ public class CardsavrSession {
         private JsonValue apiRequest(HttpUriRequest request, JsonObject jsonBody, APIHeaders headers)
                 throws IOException, CardsavrRESTException {
 
-            String authorization = "SWCH-HMAC-SHA256 Credentials=" + integratorName;
-            String nonce = Long.toString(new Date().getTime());
-            String requestSigning = request.getURI().toURL().getFile() + authorization + nonce;
-
              try {
                 SecretKey encryptionKey = sessionObjects.sessionKey != null ? sessionObjects.sessionKey : integratorKey;
+                String fullBody = null;
 
                 if (jsonBody != null && (request instanceof HttpEntityEnclosingRequestBase)) {
                     String encryptedBody = Encryption.encryptAES256(jsonBody.toString(), encryptionKey);
-                    String newBody = Json.createObjectBuilder()
+                    fullBody = Json.createObjectBuilder()
                         .add("encrypted_body", encryptedBody)
                         .build()
                         .toString();
-                    ((HttpEntityEnclosingRequestBase)request).setEntity(new StringEntity(newBody));
-                    requestSigning += newBody;
+                    ((HttpEntityEnclosingRequestBase)request).setEntity(new StringEntity(fullBody));
                     request.setHeader("Content-type", "application/json");
                 } 
     
                 if (sessionObjects.sessionToken != null) {
                     request.setHeader("x-cardsavr-session-jwt", sessionObjects.sessionToken);
                 }
-                String signature = Encryption.hmacSign(requestSigning.getBytes(), encryptionKey.getEncoded());                
+
+                String authorization = "SWCH-HMAC-SHA256 Credentials=" + integratorName;
+                String nonce = Long.toString(new Date().getTime());
+                String signature = Signing.signRequest(request.getURI().toURL().getFile(), authorization, nonce, encryptionKey, fullBody);
+
                 String version = getClass().getPackage().getImplementationVersion();
                 request.setHeader("x-cardsavr-client-application", integratorName + " Strivve Java SDK v" + version);
                 request.setHeader("x-cardsavr-trace", sessionObjects.sessionTrace.toString());
@@ -327,25 +328,26 @@ public class CardsavrSession {
                         "Missing signature/nonce/authorization header - error calling " + request.getURI().getPath(), 
                         null, null);
                 }
-                requestSigning = request.getURI().toURL().getFile() + authorization + nonce;
 
                 String result = EntityUtils.toString(response.getEntity());
                 if (result.length() > 0) {
                     String body;
+                    fullBody = null;
                     try (JsonReader reader = Json.createReader(new StringReader(result))) {
                         JsonStructure jsonst = reader.read();
-                        requestSigning += jsonst.toString();
+                        fullBody = jsonst.toString();
                         String encryptedBody = jsonst.asJsonObject().getString("encrypted_body");
                         body = Encryption.decryptAES256(encryptedBody, encryptionKey);
                     }
 
-                    String compSignature = Encryption.hmacSign(requestSigning.getBytes(), encryptionKey.getEncoded());
-                    if (signature != null && !compSignature.equals(signature)) {
+                    try {
+                        Signing.verifySignature(signature, request.getURI().toURL().getFile(), authorization, nonce, new SecretKey[] {encryptionKey}, fullBody);
+                    } catch (SignatureException e) {
                         throw new CardsavrRESTException(
                             "Invalid signature header: " + signature + " - error calling " + request.getURI().getPath(), 
                             null, null);
                     }
-                    
+
                     try (JsonReader reader = Json.createReader(new StringReader(body))) {
                         JsonStructure jsonst = reader.read();
                         if (jsonst.getValueType() == ValueType.ARRAY) {
