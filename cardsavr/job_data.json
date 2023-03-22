@@ -1,6 +1,7 @@
 {
     "status": "REQUESTED",
     "type_override1": "RPA_LOOPBACK:CARD_PLACEMENT",
+    "queue_name_override": "vbs_localstack_queue",
     "cardholder":
       { 
         "cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
