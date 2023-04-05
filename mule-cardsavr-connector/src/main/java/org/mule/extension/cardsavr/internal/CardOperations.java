@@ -46,7 +46,7 @@ public class CardOperations {
 			     .build();
 		
 		CardsavrSession.APIHeaders headers = connection.createHeaders();
-        headers.financialInsitution = "default";
+        
         
         
 			try {
@@ -70,7 +70,7 @@ public class CardOperations {
 		JsonObject response = null;
 
 		CardsavrSession.APIHeaders headers = connection.createHeaders();
-        headers.financialInsitution = "default";
+        
                 
 			try {
 				log.info("Delete Card...");

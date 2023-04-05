@@ -208,7 +208,6 @@ public class E2ETest {
     private void runJobTest(String type)  {
 
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
-        headers.financialInsitution = "default";
         JsonObject response = null;
         try {
             String data = new String(Files.readAllBytes(Paths.get("./job_data.json")), StandardCharsets.UTF_8)

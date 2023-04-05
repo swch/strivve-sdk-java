@@ -66,7 +66,6 @@ As documented on the [API documentation site](https://swch.github.io/slate), the
 
 ```
 CardsavrSession.APIHeaders headers = this.session.createHeaders();
-headers.financialInsitution = "default";
 JsonObject response = (JsonObject) session.post("/place_card_on_single_site_jobs", jsonobj, headers);
 ```
 

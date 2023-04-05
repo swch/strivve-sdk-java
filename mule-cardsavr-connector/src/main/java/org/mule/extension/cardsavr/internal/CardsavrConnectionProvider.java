@@ -92,7 +92,7 @@ public class CardsavrConnectionProvider implements ConnectionProvider<CardsavrSe
 		if (fi != null) {
 			headers.financialInsitution = fi;
 		} else {
-			headers.financialInsitution = "default";
+			
 		  		
 		}
 
