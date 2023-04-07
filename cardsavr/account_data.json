@@ -7,6 +7,8 @@
         }
     },
     "merchant_site_id":1,
-    "username":"bad_email",
-    "password":"good_password"
+    "account_link" : {
+        "username":"bad_email",
+        "password":"good_password"
+    }
 }

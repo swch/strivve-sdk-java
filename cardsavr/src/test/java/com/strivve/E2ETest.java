@@ -145,6 +145,29 @@ public class E2ETest {
     }
 
     @Test
+    public void createCardWithCardholderGrant() throws IOException, CardsavrRESTException, NoSuchAlgorithmException {
+        JsonObject response = null;
+        try {
+            CardsavrSession.APIHeaders headers = this.session.createHeaders();
+            headers.hydration = Json.createArrayBuilder().add("cardholder").build();
+            String data = new String(Files.readAllBytes(Paths.get("./card_data.json")), StandardCharsets.UTF_8)
+                .replaceAll("\\{\\{CARDHOLDER_UNIQUE_KEY\\}\\}", RandomStringUtils.random(6, true, true));
+            JsonObject card = Json.createReader(new StringReader(data)).read().asJsonObject();
+            response = (JsonObject)session.post("/cardsavr_cards", card, headers);
+        } catch (CardsavrRESTException e) {
+            System.out.println(e.getRESTErrors()[0]);
+            assert(false); return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            assert(false); return;
+        }
+        int cardId = response.getInt("id"); // card_id
+        String grant = response.getJsonObject("cardholder").getString("grant");
+        assertTrue("Create card should return a valid id", cardId > 0);
+        assertTrue("Create card with cardholder should return a valid grant", grant != null);
+    }
+
+    @Test
     public void createAndUpdateAccount() throws IOException, CardsavrRESTException, NoSuchAlgorithmException {
 
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
