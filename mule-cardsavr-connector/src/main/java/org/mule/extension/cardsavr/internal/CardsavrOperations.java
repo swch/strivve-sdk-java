@@ -9,9 +9,8 @@ import java.io.IOException;
 
 import javax.json.JsonValue;
 
-import java.util.List;
+import java.util.Map;
 
-import org.apache.http.NameValuePair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -34,7 +33,7 @@ public class CardsavrOperations {
 		String merchantPath = "/merchant_sites";
 		JsonValue getMerchants = null;
 		String response = null;
-		List<NameValuePair> filters = null;
+		Map<String, String> filters = null;
 		  
 		try {
 			getMerchants = connection.get(merchantPath, filters, null);
