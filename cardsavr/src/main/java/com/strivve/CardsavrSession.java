@@ -5,6 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -37,8 +38,10 @@ import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import java.security.cert.X509Certificate;
@@ -67,15 +70,17 @@ public class CardsavrSession {
                 public X509Certificate[] getAcceptedIssuers() { 
                     return new X509Certificate[0];
                 } 
-                public void checkClientTrusted( 
-                    java.security.cert.X509Certificate[] certs, String authType) {
-                    } 
-                public void checkServerTrusted( 
-                    java.security.cert.X509Certificate[] certs, String authType) {
-                }
+                public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) { } 
+                public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) { }          
             } 
         }; 
         
+        HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+            public boolean verify(String arg0, SSLSession arg1) {
+                return true;
+            }
+        });       
+
         if (!reject) {
             try {
                 SSLContext sc = SSLContext.getInstance("SSL"); 
@@ -317,7 +322,7 @@ public class CardsavrSession {
 
                 String authorization = "SWCH-HMAC-SHA256 Credentials=" + integratorName;
                 String nonce = Long.toString(new Date().getTime());
-                String signature = Signing.signRequest(connection.getURL().getPath(), authorization, nonce, encryptionKey, fullBody);
+                String signature = Signing.signRequest(connection.getURL().getFile(), authorization, nonce, encryptionKey, fullBody);
 
                 String version = getClass().getPackage().getImplementationVersion();
                 connection.setRequestProperty("x-cardsavr-client-application", integratorName + " Strivve Java SDK v" + version);
@@ -346,6 +351,8 @@ public class CardsavrSession {
                 } else if (responseCode == 403 || responseCode == 401) {
                     throw new SecurityException(responseCode + " " + connection.getURL().getPath());
                 }
+                // for >= 400 errors we have to grab the error stream
+                InputStream is = responseCode >= 400 ? connection.getErrorStream() : connection.getInputStream();
 
                 try {
                     authorization = connection.getHeaderField("x-cardsavr-authorization");
@@ -357,7 +364,7 @@ public class CardsavrSession {
                         null, null);
                 }
 
-                BufferedReader br = new BufferedReader(new InputStreamReader((connection.getInputStream())));
+                BufferedReader br = new BufferedReader(new InputStreamReader(is));
                 String result = br.lines().collect(Collectors.joining());
 
                 if (result.length() > 0) {
@@ -371,7 +378,7 @@ public class CardsavrSession {
                     }
 
                     try {
-                        Signing.verifySignature(signature, connection.getURL().getPath(), authorization, nonce, new SecretKey[] {encryptionKey}, fullBody);
+                        Signing.verifySignature(signature, connection.getURL().getFile(), authorization, nonce, new SecretKey[] {encryptionKey}, fullBody);
                     } catch (SignatureException e) {
                         throw new CardsavrRESTException(
                             "Invalid signature header: " + signature + " - error calling " + connection.getURL().getPath(), 
