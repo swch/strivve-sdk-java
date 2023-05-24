@@ -15,6 +15,7 @@ import java.util.*;
 
 import javax.json.Json;
 import javax.json.JsonArray;
+import javax.json.JsonException;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import javax.json.JsonString;
@@ -319,7 +320,13 @@ public class E2ETest {
                     System.out.println(e.getRESTErrors()[0]);
                     e.printStackTrace();
                     latch.countDown();
-                }
+                } catch (JsonException e) {
+                    e.printStackTrace();
+                    latch.countDown();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    latch.countDown();
+                }      
             }
         }, 1000, delay); //wait one second, then wait five
         try {
