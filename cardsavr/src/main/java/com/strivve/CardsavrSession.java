@@ -152,7 +152,14 @@ public class CardsavrSession {
     }
 
     public void restore(byte[] sessionObjects) throws ClassNotFoundException, IOException {
+        restore(sessionObjects, null);
+    }
+
+    public void restore(byte[] sessionObjects, JsonObject trace) throws ClassNotFoundException, IOException {
         this.sessionObjects = (SessionObjects)(new ObjectInputStream(new ByteArrayInputStream(sessionObjects))).readObject();
+        if (trace != null) {
+            this.sessionObjects.sessionTrace = trace;
+        }
     }
 
     public JsonObject login(String username, String password, JsonObject trace) throws IOException,
