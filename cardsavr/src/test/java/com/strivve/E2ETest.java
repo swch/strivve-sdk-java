@@ -100,7 +100,8 @@ public class E2ETest {
                     .map(object -> ((JsonString) object).getString()).collect(Collectors.toList());
             assertTrue(list.contains("canada"));
         } catch (Exception e) {
-            System.out.println("HERE");;
+            System.out.println("Exception thrown queryung merchants");;
+            e.printStackTrace();
         }
     }
 
