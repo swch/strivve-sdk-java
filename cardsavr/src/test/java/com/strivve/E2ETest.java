@@ -93,12 +93,13 @@ public class E2ETest {
     @Test
     public void selectMerchantsFilterTest() throws IOException, CardsavrRESTException {
         try {
-            Map<String, String> filters = new HashMap<String, String>(1);
-            filters.put("tags", "canada");
+            List<AbstractMap.SimpleImmutableEntry<String, String>> filters = new LinkedList<AbstractMap.SimpleImmutableEntry<String, String>>();
+            filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("tags", "usa,prod"));
+            filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("tags", "canada,prod"));
             JsonValue response = session.get("/merchant_sites", filters, null);
             List<String> list = ((JsonArray) response).getJsonObject(0).getJsonArray("tags").stream()
                     .map(object -> ((JsonString) object).getString()).collect(Collectors.toList());
-            assertTrue(list.contains("canada"));
+            assertTrue(list.contains("prod"));
         } catch (Exception e) {
             System.out.println("Exception thrown queryung merchants");;
             e.printStackTrace();
@@ -141,8 +142,8 @@ public class E2ETest {
 
     @Test
     public void filterError() throws IOException, CardsavrRESTException {
-        Map<String, String> filters = new HashMap<String, String>(1);
-        filters.put("bad_filter", "canada");
+        List<AbstractMap.SimpleImmutableEntry<String, String>> filters = new LinkedList<AbstractMap.SimpleImmutableEntry<String, String>>();
+        filters.add(new AbstractMap.SimpleImmutableEntry<String,String>("bad_filter", "canada"));
         CardsavrRESTException exception = assertThrows(CardsavrRESTException.class,
                 () -> session.get("/merchant_sites", filters, null));
         Error[] errors = exception.getRESTErrors();

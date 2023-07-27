@@ -21,8 +21,9 @@ import java.net.Proxy;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.util.Date;
-import java.util.Map;
+import java.util.List;
 import java.util.stream.Collectors;
+import java.util.AbstractMap;
 import java.util.Arrays;
 import java.util.Base64;
 
@@ -207,7 +208,7 @@ public class CardsavrSession {
         return (JsonObject)get("/session/end", null, null);
     }
 
-    public JsonValue get(String path, Map<String, String> filters, APIHeaders headers) throws IOException,
+    public JsonValue get(String path, List<AbstractMap.SimpleImmutableEntry<String, String>> filters, APIHeaders headers) throws IOException,
             CardsavrRESTException {
         return client.apiRequest(this.makeConnection("GET", path, filters, this.proxy), null, headers);
     }
@@ -220,7 +221,7 @@ public class CardsavrSession {
         return client.apiRequest(this.makeConnection("POST", path, null, this.proxy), body, headers);
     }
 
-    public JsonValue put(String path, Map<String, String>  filters, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
+    public JsonValue put(String path, List<AbstractMap.SimpleImmutableEntry<String, String>> filters, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
         return client.apiRequest(this.makeConnection("PUT", path, filters, this.proxy), body, headers);
     }
 
@@ -232,7 +233,7 @@ public class CardsavrSession {
         return client.apiRequest(this.makeConnection("DELETE", Paths.get(path, Integer.toString(id)).toString(), null, this.proxy), null, headers);
     }
 
-    private HttpsURLConnection makeConnection(String method, String path, Map<String, String> filters, Proxy proxy) throws MalformedURLException, UnsupportedEncodingException, IOException {
+    private HttpsURLConnection makeConnection(String method, String path, List<AbstractMap.SimpleImmutableEntry<String, String>> filters, Proxy proxy) throws MalformedURLException, UnsupportedEncodingException, IOException {
         HttpsURLConnection conn = (proxy != null) ? 
             ((HttpsURLConnection) makeURL(path, filters).openConnection(proxy)) :
             ((HttpsURLConnection) makeURL(path, filters).openConnection());
@@ -240,10 +241,10 @@ public class CardsavrSession {
         return conn;
     }
 
-    private URL makeURL(String path, Map<String, String> filters) throws MalformedURLException, UnsupportedEncodingException {
+    private URL makeURL(String path, List<AbstractMap.SimpleImmutableEntry<String, String>> filters) throws MalformedURLException, UnsupportedEncodingException {
         path = path.replace('\\', '/');
         if (filters != null) {
-            path += "?" + filters.entrySet().stream()
+            path += "?" + filters.stream()
                 .map(p -> encodeUTF8(p.getKey()) + "=" + encodeUTF8(p.getValue()))
                 .reduce((p1, p2) -> p1 + "&" + p2)
                 .orElse("");
