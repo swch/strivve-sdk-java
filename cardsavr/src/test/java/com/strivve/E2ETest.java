@@ -94,12 +94,12 @@ public class E2ETest {
     public void selectMerchantsFilterTest() throws IOException, CardsavrRESTException {
         try {
             List<AbstractMap.SimpleImmutableEntry<String, String>> filters = new LinkedList<AbstractMap.SimpleImmutableEntry<String, String>>();
-            filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("tags", "usa,prod"));
-            filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("tags", "canada,prod"));
+            filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("tags", "disabled,prod"));
+            filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("tags", "usa"));
             JsonValue response = session.get("/merchant_sites", filters, null);
             List<String> list = ((JsonArray) response).getJsonObject(0).getJsonArray("tags").stream()
                     .map(object -> ((JsonString) object).getString()).collect(Collectors.toList());
-            assertTrue(list.contains("prod"));
+            assertTrue(list.contains("usa"));
         } catch (Exception e) {
             System.out.println("Exception thrown queryung merchants");;
             e.printStackTrace();
