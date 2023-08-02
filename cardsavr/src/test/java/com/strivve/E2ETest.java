@@ -95,7 +95,8 @@ public class E2ETest {
     @Test
     public void selectMerchantsFilterTest() throws IOException, CardsavrRESTException {
         List<NameValuePair> filters = new ArrayList<>(1);
-        filters.add(new BasicNameValuePair("tags", "canada"));
+        filters.add(new BasicNameValuePair("tags", "canada,development"));
+        filters.add(new BasicNameValuePair("tags", "canada,synthetic"));
         JsonValue response = session.get("/merchant_sites", filters, null);
         List<String> list = ((JsonArray) response).getJsonObject(0).getJsonArray("tags").stream()
                 .map(object -> ((JsonString) object).getString()).collect(Collectors.toList());
