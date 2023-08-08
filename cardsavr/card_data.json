@@ -8,15 +8,13 @@
     "expiration_month":"12",
     "expiration_year":"24",
     "name_on_card":"FirstName LastName",
-    "first_name":"FirstName",
-    "last_name":"LastName",
     "address":
         {
         "cardholder_ref": {
             "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
         },
-        "first_name":"Switch",
-        "last_name":"Strivve",
+        "first_name":"FirstName",
+        "last_name":"LastName",
         "address1":"SGTClNSCCMqlfjuzTmJuepDyFgvWhlCMRycXlKGiRIooOJJkoXeObOcAwJMGeqjSDWfhTHobAWMimcCynMIQcvlBFSbMQlwUFyJ",
         "address2":"AyFgoCTjCLXUQVylBAfkHJOtqkkKJjuaLHnmJpSctqBOQueIvciyAUPqYoFpkiAPlkGjgPuabhAPCHFPvaxciObOmIBvBUWpngD",
         "city":"Seattle",
@@ -24,6 +22,8 @@
         "postal_code":"98177",
         "postal_other":"98177-0124",
         "country":"USA",
-        "is_primary": true
+        "is_primary": true,
+        "phone_number": "5555555555",
+        "email": "test@domain.com"
     }
 }
