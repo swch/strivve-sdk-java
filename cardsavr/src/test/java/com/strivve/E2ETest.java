@@ -10,7 +10,9 @@ import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.*;
 
 import javax.json.Json;
@@ -22,6 +24,7 @@ import javax.json.JsonString;
 import javax.json.JsonValue;
 
 import com.strivve.CardsavrRESTException.Error;
+import com.strivve.RotatorUtilities;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
@@ -101,7 +104,7 @@ public class E2ETest {
                     .map(object -> ((JsonString) object).getString()).collect(Collectors.toList());
             assertTrue(list.contains("usa"));
         } catch (Exception e) {
-            System.out.println("Exception thrown queryung merchants");;
+            System.out.println("Exception thrown querying merchants");;
             e.printStackTrace();
         }
     }
@@ -175,6 +178,64 @@ public class E2ETest {
     }
 
     @Test
+    public void testIntegratorPasswordRotation() throws IOException, CardsavrRESTException, NoSuchAlgorithmException {
+
+        CardsavrSession.APIHeaders headers = this.session.createHeaders();
+        JsonObject response = null;
+        int userId = -1;
+        int integratorId = -1;
+        try {
+            // create an empty user
+            String username = "TEST_USER";
+            String password = "PASSWORD";
+            JsonObject newUser = Json.createObjectBuilder()
+                .add("username", username)
+                .add("password", Base64.getEncoder().encodeToString(Encryption.generatePasswordKey(password, username)))
+                .add("role", "customer_agent")
+                .build();
+            response = (JsonObject) session.post("/cardsavr_users", newUser, headers);
+            userId = response.getInt("id");
+            assertTrue(response.getInt("id") > 0);
+
+            // create an integrator
+            String integratorName = "TEST_INTEGRATOR";
+            JsonObject integrator = Json.createObjectBuilder()
+                .add("name", integratorName)
+                .add("integrator_type", "application")
+                .build();
+            response = (JsonObject) session.post("/integrators", integrator, headers);
+            integratorId = response.getInt("id");
+
+            CardsavrSession cs = CardsavrSession.createSession(integratorName, response.getString("current_key"), testConfig.cardsavrServer, testConfig.proxyhost, testConfig.proxyport, testConfig.username, testConfig.password);
+            response = (JsonObject) session.login(testConfig.username, testConfig.password, null);
+            assertTrue(response.getInt("user_id") == userId);
+
+            String newKey = RotatorUtilities.rotateIntegrator(session, integratorName);
+            String newPassword = "PASSWORD_2";
+            RotatorUtilities.updatePassword(session, username, newPassword);
+
+            cs = CardsavrSession.createSession(integratorName, newKey, testConfig.cardsavrServer, testConfig.proxyhost, testConfig.proxyport, testConfig.username, testConfig.password);
+            response = (JsonObject) session.login(username, newPassword, null);
+            assertTrue(response.getInt("user_id") == userId);
+
+        } catch (CardsavrRESTException e) {
+            System.out.println(e.getRESTErrors()[0]);
+            assert(false);
+        } catch (IOException e) {
+            e.printStackTrace();
+            assert(false);
+        } catch (InvalidKeyException e) {
+            e.printStackTrace();
+            assert(false);
+        } catch (InvalidKeySpecException e) {
+            e.printStackTrace();
+            assert(false);
+        }
+        session.delete("/cardsavr_users", userId, headers);
+        session.delete("/integrators", integratorId, headers);
+    }
+
+    @Test
     public void createAndUpdateAccount() throws IOException, CardsavrRESTException, NoSuchAlgorithmException {
 
         CardsavrSession.APIHeaders headers = this.session.createHeaders();
@@ -216,7 +277,6 @@ public class E2ETest {
         }
         assertTrue("Object was not updated", !response.getString("last_updated_on").equals(response.getString("created_on")));
     }
-
     @Test
     public void jobPostJobTest() {
         runJobTest("JOB");

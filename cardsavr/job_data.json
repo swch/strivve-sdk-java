@@ -1,7 +1,7 @@
 {
     "status": "REQUESTED",
     "type_override1": "RPA_LOOPBACK:CARD_PLACEMENT",
-    "queue_name_override": "vbs_localstack_queue",
+    "queue_name_override1": "vbs_localstack_queue",
     "cardholder":
       { 
         "cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
@@ -14,14 +14,12 @@
         "cardholder_ref": {
           "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
         },
-        "par":"peLpzDnEHdhiiWEtuhUgIbN{{CARDHOLDER_UNIQUE_KEY}}",
+        "customer_key":"peLpzDnEHdhiiWEtuhUgIbN{{CARDHOLDER_UNIQUE_KEY}}",
         "pan":"KOnalFfwdrBXlZD",
         "cvv":"123",
         "expiration_month":"12",
         "expiration_year":"24",
         "name_on_card":"FirstName LastName",
-        "first_name":"FirstName",
-        "last_name":"LastName",
         "address":
           {
             "cardholder_ref": {
