@@ -207,7 +207,7 @@ public class E2ETest {
             integratorId = response.getInt("id");
 
             CardsavrSession cs = CardsavrSession.createSession(integratorName, response.getString("current_key"), testConfig.cardsavrServer, testConfig.proxyhost, testConfig.proxyport, testConfig.username, testConfig.password);
-            response = (JsonObject) session.login(testConfig.username, testConfig.password, null);
+            response = (JsonObject) cs.login(username, password, null);
             assertTrue(response.getInt("user_id") == userId);
 
             String newKey = RotatorUtilities.rotateIntegrator(session, integratorName);
@@ -215,7 +215,7 @@ public class E2ETest {
             RotatorUtilities.updatePassword(session, username, newPassword);
 
             cs = CardsavrSession.createSession(integratorName, newKey, testConfig.cardsavrServer, testConfig.proxyhost, testConfig.proxyport, testConfig.username, testConfig.password);
-            response = (JsonObject) session.login(username, newPassword, null);
+            response = (JsonObject) cs.login(username, newPassword, null);
             assertTrue(response.getInt("user_id") == userId);
 
         } catch (CardsavrRESTException e) {
