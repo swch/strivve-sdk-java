@@ -78,10 +78,14 @@ public class Encryption {
         return convertRawToAESKey(ka.generateSecret());
     }
 
+    public static  byte[] generatePasswordKey(String password, String username)
+        throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException {
+        return sha256pbkdf2(password, sha256Hash(username.getBytes()), 5000);
+    }
+
     public static String generateSignedPasswordKey(String password, String username, byte[] salt)
         throws NoSuchAlgorithmException, InvalidKeySpecException, InvalidKeyException {
-        byte[] passwordKey = sha256pbkdf2(password, sha256Hash(username.getBytes()), 5000);
-        return hmacSign(salt, passwordKey);
+        return hmacSign(salt, generatePasswordKey(password, username));
     }
 
     public static byte[] sha256pbkdf2(String password, byte[] salt, int iterations)
