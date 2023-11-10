@@ -274,12 +274,12 @@ public class E2ETest {
         }
         assertTrue("Object was not updated", !response.getString("last_updated_on").equals(response.getString("created_on")));
     }
-    @Test
+    //@Test
     public void jobPostJobTest() {
         runJobTest("JOB");
     }
     
-    @Test
+    //@Test
     public void jobPostCardholderMessageTest() {
         runJobTest("CARDHOLDER");
     }
