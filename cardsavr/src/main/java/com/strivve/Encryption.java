@@ -11,41 +11,48 @@ import javax.crypto.Mac;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
 
 import java.security.*;
+import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
 
 public class Encryption {
 
-    
+    private final static SecureRandom secureRandom = new SecureRandom();
+    private final static int GCM_IV_LENGTH = 12;
+    private final static int GCM_AUTH_TAG_LENGTH = 128;
+        
     private Encryption() {}
 
     public static String encryptAES256(String strToEncrypt, Key secretKey) throws NoSuchAlgorithmException,
             NoSuchPaddingException, InvalidKeyException, InvalidAlgorithmParameterException, IllegalBlockSizeException,
             BadPaddingException {
-        byte[] iv = new byte[16];
-        new SecureRandom().nextBytes(iv);
-        IvParameterSpec ivspec = new IvParameterSpec(iv);
 
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        byte[] iv = new byte[GCM_IV_LENGTH]; //NEVER REUSE THIS IV WITH SAME KEY
+        secureRandom.nextBytes(iv);
+        GCMParameterSpec ivspec = new GCMParameterSpec(GCM_AUTH_TAG_LENGTH, iv); //128 bit auth tag length
+        final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.ENCRYPT_MODE, secretKey, ivspec);
-        return Base64.getEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes(StandardCharsets.UTF_8))) + '$' + Base64.getEncoder().encodeToString(iv);
+        return Base64.getEncoder().encodeToString(cipher.doFinal(strToEncrypt.getBytes(StandardCharsets.UTF_8))) + '$' + Base64.getEncoder().encodeToString(iv) + "$aes-256-gcm";
     }
 
     public static String decryptAES256(String strToDecrypt, Key secretKey)
             throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException,
             InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
-        String[] items = strToDecrypt.split("\\$");
-        IvParameterSpec ivspec = new IvParameterSpec(Base64.getDecoder().decode(items[1]));
 
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        String[] items = strToDecrypt.split("\\$");
+
+        AlgorithmParameterSpec ivspec = new GCMParameterSpec(GCM_AUTH_TAG_LENGTH, Base64.getDecoder().decode(items[1]), 0, GCM_IV_LENGTH);
+        Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
         cipher.init(Cipher.DECRYPT_MODE, secretKey, ivspec);
-        return new String(cipher.doFinal(Base64.getDecoder().decode(items[0])));
+        byte[] cipherMessage =  Base64.getDecoder().decode(items[0]);
+        return new String(cipher.doFinal(cipherMessage, 0, cipherMessage.length));
     }
 
     public static SecretKey convertRawToAESKey(byte[] raw) {

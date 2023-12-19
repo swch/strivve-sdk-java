@@ -6,9 +6,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-import java.security.SignatureException;
 import java.util.Base64;
 import java.util.stream.Collectors;
 
@@ -20,7 +17,6 @@ import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import com.strivve.Signing;
-import com.strivve.CardsavrSession;
 
 public class App {
 
@@ -44,6 +40,7 @@ public class App {
             String signature = headers.getFirst("x-cardsavr-signature");
             String nonce = headers.getFirst("x-cardsavr-nonce");
             String authorization = headers.getFirst("x-cardsavr-authorization");
+            String response = "Response is not verified";
             if (signature != null && nonce != null && authorization != null) {
                 try {
                     Signing.verifySignature(
@@ -51,15 +48,15 @@ public class App {
                         "http://"+t.getRequestHeaders().getFirst("Host")+t.getRequestURI(),
                         authorization, 
                         nonce, 
-                        new SecretKey[] {Encryption.convertRawToAESKey(Base64.getDecoder().decode("vktYFSb2UnU3JJGi8aSBF6OwvfUjh1XE0C8BHdneTN8="))}, 
+                        new SecretKey[] {Encryption.convertRawToAESKey(Base64.getDecoder().decode("KfqTiEYTNWoDMkiZlGmaxNiaZnsmvrW9qxVPd2pb9M0="))}, 
                         input);
+                    response = "Response IS verified";
                 } catch (Exception e) {
                     // Signature verification failed
                     e.printStackTrace();
                 }
             }
-            
-            String response = "This is the response";
+            System.out.println(response);
             t.sendResponseHeaders(200, response.length());
             OutputStream os = t.getResponseBody();
             os.write(response.getBytes());
