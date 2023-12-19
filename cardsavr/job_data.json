@@ -1,7 +1,7 @@
 {
     "status": "REQUESTED",
     "type_override1": "RPA_LOOPBACK:CARD_PLACEMENT",
-    "queue_name_override": "vbs_localstack_queue",
+    "queue_name_override1": "vbs_localstack_queue",
     "cardholder":
       { 
         "cuid":"{{CARDHOLDER_UNIQUE_KEY}}",
@@ -43,7 +43,7 @@
           "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
         },
         "merchant_site_id":1,
-        "account_identification" : {
+        "account_link" : {
           "username":"bad_email",
           "password":"good_password"
         }
