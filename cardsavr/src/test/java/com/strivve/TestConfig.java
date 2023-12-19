@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.net.MalformedURLException;
-import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.*;
@@ -14,18 +13,19 @@ import javax.json.Json;
 import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonReader;
-import org.apache.http.HttpHost;
-import org.apache.http.auth.UsernamePasswordCredentials;
 
 public class TestConfig {
 
     String integratorName;
     String integratorKey;
-    HttpHost cardsavrServer;
-    UsernamePasswordCredentials cardsavrCreds;
-    HttpHost proxy;
-    UsernamePasswordCredentials proxyCreds;
+    URL cardsavrServer;
+    String proxyUsername;
+    String proxyPassword;
+    String proxyhost;
+    int proxyport;
     String queueNameOverride;
+    String username;
+    String password;
 
     public static TestConfig getTestConfig() throws FileNotFoundException, MalformedURLException, URISyntaxException {
 
@@ -43,11 +43,9 @@ public class TestConfig {
                 .collect(Collectors.toMap(j -> j.getString("key"), j -> j.getString("value")));;
             tc.integratorName = values.get("testing/credentials/primary/integrator/name");
             tc.integratorKey = values.get("testing/credentials/primary/integrator/key");
-            URL url = new URL("https://api." + values.get("cardsavr/config/base_url")); 
-            tc.cardsavrServer = new HttpHost(url.getHost(), url.getPort());
-            tc.cardsavrCreds = new UsernamePasswordCredentials(
-                values.get("testing/credentials/primary/user/username"), 
-                values.get("testing/credentials/primary/user/password"));
+            tc.cardsavrServer = new URL("https://api." + values.get("cardsavr/config/base_url")); 
+            tc.username = ("testing/credentials/primary/user/username");
+            tc.username = ("testing/credentials/primary/user/password"); 
             tc.integratorKey = values.get("testing/credentials/primary/integrator/key");
             // to ensure that all jobs get queued propertly
             tc.queueNameOverride = values.get("cardupdatr_ux/queue_name_override");
@@ -59,13 +57,15 @@ public class TestConfig {
             creds = TestConfig.getInstance(creds);
             tc.integratorName = creds.getString("app_name");
             tc.integratorKey = creds.getString("app_key");
-            URI uri = new URI(creds.getString("cardsavr_server"));
-            tc.cardsavrServer = new HttpHost(uri.getHost(), uri.getPort());
-            tc.cardsavrCreds = new UsernamePasswordCredentials(creds.getString("app_username"), creds.getString("app_password"));
+            tc.cardsavrServer = new URL(creds.getString("cardsavr_server"));
+            tc.username = creds.getString("app_username");
+            tc.password = creds.getString("app_password");
             if (creds.containsKey("proxy_server")) {
-                tc.proxy = new HttpHost(creds.getString("proxy_server"), creds.getInt("proxy_port"));
+                tc.proxyhost = creds.getString("proxy_server");
+                tc.proxyport = creds.getInt("proxy_port") ;
                 if (creds.containsKey("proxy_username") && creds.containsKey("proxy_password")) {
-                    tc.proxyCreds = new UsernamePasswordCredentials(creds.getString("proxy_username"), creds.getString("proxy_password"));
+                    tc.username = creds.getString("proxy_username");
+                    tc.password = creds.getString("proxy_password");
                 }
             }
         }
