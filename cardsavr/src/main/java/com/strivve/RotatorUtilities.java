@@ -5,8 +5,10 @@ import java.io.IOException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.LinkedList;
 import java.util.List;
 
 import javax.json.Json;
@@ -14,15 +16,13 @@ import javax.json.JsonArray;
 import javax.json.JsonObject;
 import javax.json.JsonValue;
 
-import org.apache.http.NameValuePair;
-import org.apache.http.message.BasicNameValuePair;
-
 public class RotatorUtilities {
 
     public static String rotateIntegrator(CardsavrSession session, String integratorName)
             throws CardsavrRESTException, IOException, FileNotFoundException {
-        List<NameValuePair> filters = new ArrayList<>(1);
-        filters.add(new BasicNameValuePair("name", integratorName));
+
+        List<AbstractMap.SimpleImmutableEntry<String, String>> filters = new LinkedList<AbstractMap.SimpleImmutableEntry<String, String>>();
+        filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("name", integratorName));
         JsonValue response = session.get("/integrators", filters, null);
         if (((JsonArray) response).size() == 0) {
             throw new FileNotFoundException("Unable to rotate unknown integrator: " + integratorName);
@@ -35,8 +35,8 @@ public class RotatorUtilities {
     public static JsonObject updatePassword(CardsavrSession session, String username, String new_password)
             throws CardsavrRESTException, IOException, InvalidKeyException, NoSuchAlgorithmException, InvalidKeySpecException {
 
-        List<NameValuePair> filters = new ArrayList<>(1);
-        filters.add(new BasicNameValuePair("username", username));
+        List<AbstractMap.SimpleImmutableEntry<String, String>> filters = new LinkedList<AbstractMap.SimpleImmutableEntry<String, String>>();
+        filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("username", username));
         JsonValue response = session.get("/cardsavr_users", filters, null);
         if (((JsonArray) response).size() == 0) {
             throw new FileNotFoundException("Unable to rotate password for unknown username: " + username);
