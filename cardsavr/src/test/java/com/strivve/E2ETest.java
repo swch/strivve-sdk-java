@@ -418,7 +418,20 @@ public class E2ETest {
             JsonObject newCreds = null;
             String messageType = arr.getJsonObject(0).getString("type");
             if (messageType.equals("credential_request") || messageType.equals("initial_account_link")) {
-                newCreds = Json.createObjectBuilder()
+                JsonArray al = arr.getJsonObject(0).getJsonArray("account_link");
+                JsonObject jo = al.getJsonObject(0);
+                String s = jo.getString("key_name");
+                if (al.getJsonObject(0).getString("key_name").equals("phone_number") && al.getJsonObject(1).getString("key_name").equals("email")) {
+                    newCreds = Json.createObjectBuilder()
+                    .add("account", Json.createObjectBuilder()
+                        .add("account_link", Json.createObjectBuilder()
+                            .add("email", "test@test.com")
+                            .add("phone_number", "5555555555")
+                            .build())
+                        .build())
+                    .build();
+                } else {
+                    newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()
                         .add("account_link", Json.createObjectBuilder()
                             .add("username", "good_email")
@@ -426,6 +439,7 @@ public class E2ETest {
                             .build())
                         .build())
                     .build();
+                }
             } else if (messageType.startsWith("tfa")) {
                 newCreds = Json.createObjectBuilder()
                     .add("account", Json.createObjectBuilder()

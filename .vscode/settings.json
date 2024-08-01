@@ -6,5 +6,6 @@
     "java.project.referencedLibraries": [
         "lib/**/*.jar",
         "cardsavr/src/main/java/**/*.jar"
-    ]
+    ],
+    "java.compile.nullAnalysis.mode": "automatic"
 }
