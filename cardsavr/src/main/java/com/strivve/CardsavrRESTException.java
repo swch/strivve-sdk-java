@@ -19,22 +19,29 @@ public class CardsavrRESTException extends Exception {
         this.rawResponse = response;
 
         List<Error> list = new LinkedList<>();
-        errorsArray.forEach(it -> {
-            JsonObject topError = it.asJsonObject();
-            list.add(new Error(topError.getString("name"), topError.getString("message"), topError.getString("property"), "top"));
-        });
-        JsonObject obj = response.asJsonObject();
-        obj.forEach((key, value) -> {
-            if (value instanceof JsonObject) {
-                JsonArray subErrors = ((JsonObject)value).getJsonArray("_errors");
-                if (subErrors != null) {
-                    subErrors.forEach(it -> {
-                        JsonObject subError = it.asJsonObject();
-                        list.add(new Error(subError.getString("name"), subError.getString("message"), subError.getString("property"), key));
-                    });
+        if (errorsArray != null) {
+            errorsArray.forEach(it -> {
+                JsonObject topError = it.asJsonObject();
+                list.add(new Error(topError.getString("name"), topError.getString("message"), topError.getString("property"), "top"));
+            });
+        }
+        if (response != null) {
+            JsonObject obj = response.asJsonObject();
+            obj.forEach((key, value) -> {
+                if (value instanceof JsonObject) {
+                    JsonArray subErrors = ((JsonObject)value).getJsonArray("_errors");
+                    if (subErrors != null) {
+                        subErrors.forEach(it -> {
+                            JsonObject subError = it.asJsonObject();
+                            list.add(new Error(subError.getString("name"), subError.getString("message"), subError.getString("property"), key));
+                        });
+                    }
                 }
-            }
-        });
+            });
+        }
+        if (list.size() == 0) {
+            list.add(new Error(message, message, null, null));
+        }
         this.errors = list.toArray(new Error[list.size()]);
     }
 

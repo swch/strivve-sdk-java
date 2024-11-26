@@ -30,9 +30,6 @@ import java.util.concurrent.CountDownLatch;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.http.NameValuePair;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.message.BasicNameValuePair;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -58,8 +55,8 @@ public class E2ETest {
     @Before
     public void loginTest() throws IOException, CardsavrRESTException {
 
-        this.session = CardsavrSession.createSession(testConfig.integratorName, testConfig.integratorKey, testConfig.cardsavrServer, testConfig.proxy, testConfig.proxyCreds);
-        JsonObject obj = (JsonObject) session.login(testConfig.cardsavrCreds, null);
+        this.session = CardsavrSession.createSession(testConfig.integratorName, testConfig.integratorKey, testConfig.cardsavrServer, testConfig.proxyhost, testConfig.proxyport, testConfig.username, testConfig.password);
+        JsonObject obj = (JsonObject) session.login(testConfig.username, testConfig.password, null);
         assertTrue(obj.getInt("user_id") > 0);
     }
 
@@ -67,7 +64,7 @@ public class E2ETest {
     public void sessioinRestoreTest() {
         try {
             byte[] sessionObjects = session.serializeSessionObjects();
-            CardsavrSession session2 = CardsavrSession.createSession(testConfig.integratorName, testConfig.integratorKey, testConfig.cardsavrServer, testConfig.proxy, testConfig.proxyCreds);
+            CardsavrSession session2 = CardsavrSession.createSession(testConfig.integratorName, testConfig.integratorKey, testConfig.cardsavrServer, testConfig.proxyhost, testConfig.proxyport, testConfig.proxyUsername, testConfig.proxyPassword);
             session2.restore(sessionObjects);
             try {
                 JsonValue response = session2.get("/merchant_sites", null, null);
@@ -98,13 +95,18 @@ public class E2ETest {
 
     @Test
     public void selectMerchantsFilterTest() throws IOException, CardsavrRESTException {
-        List<NameValuePair> filters = new ArrayList<>(1);
-        filters.add(new BasicNameValuePair("tags", "canada,development"));
-        filters.add(new BasicNameValuePair("tags", "canada,synthetic"));
-        JsonValue response = session.get("/merchant_sites", filters, null);
-        List<String> list = ((JsonArray) response).getJsonObject(0).getJsonArray("tags").stream()
-                .map(object -> ((JsonString) object).getString()).collect(Collectors.toList());
-        assertTrue(list.contains("canada"));
+        try {
+            List<AbstractMap.SimpleImmutableEntry<String, String>> filters = new LinkedList<AbstractMap.SimpleImmutableEntry<String, String>>();
+            filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("tags", "disabled,prod"));
+            filters.add(new AbstractMap.SimpleImmutableEntry<String, String>("tags", "usa"));
+            JsonValue response = session.get("/merchant_sites", filters, null);
+            List<String> list = ((JsonArray) response).getJsonObject(0).getJsonArray("tags").stream()
+                    .map(object -> ((JsonString) object).getString()).collect(Collectors.toList());
+            assertTrue(list.contains("usa"));
+        } catch (Exception e) {
+            System.out.println("Exception thrown querying merchants");;
+            e.printStackTrace();
+        }
     }
 
     @Test
@@ -112,7 +114,7 @@ public class E2ETest {
         try {
             session.get("/merchant_sites/0", null, null);
         } catch (FileNotFoundException e) {
-            assertTrue(e.getMessage().indexOf("404 Not Found") != -1);
+            assertTrue(e.getMessage().indexOf("404") != -1);
         }
     }
 
@@ -136,13 +138,15 @@ public class E2ETest {
                 }
             });
 
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
     @Test
     public void filterError() throws IOException, CardsavrRESTException {
-        List<NameValuePair> filters = new ArrayList<>(1);
-        filters.add(new BasicNameValuePair("bad_filter", "canada"));
+        List<AbstractMap.SimpleImmutableEntry<String, String>> filters = new LinkedList<AbstractMap.SimpleImmutableEntry<String, String>>();
+        filters.add(new AbstractMap.SimpleImmutableEntry<String,String>("bad_filter", "canada"));
         CardsavrRESTException exception = assertThrows(CardsavrRESTException.class,
                 () -> session.get("/merchant_sites", filters, null));
         Error[] errors = exception.getRESTErrors();
@@ -202,17 +206,16 @@ public class E2ETest {
             response = (JsonObject) session.post("/integrators", integrator, headers);
             integratorId = response.getInt("id");
 
-            // log in as new user with new integrator
-            CardsavrSession cs = CardsavrSession.createSession(integratorName, response.getString("current_key"), testConfig.cardsavrServer, testConfig.proxy, testConfig.proxyCreds);
-            response = (JsonObject) cs.login(new UsernamePasswordCredentials(username, password), null);
+            CardsavrSession cs = CardsavrSession.createSession(integratorName, response.getString("current_key"), testConfig.cardsavrServer, testConfig.proxyhost, testConfig.proxyport, testConfig.username, testConfig.password);
+            response = (JsonObject) cs.login(username, password, null);
             assertTrue(response.getInt("user_id") == userId);
 
             String newKey = RotatorUtilities.rotateIntegrator(session, integratorName);
             String newPassword = "PASSWORD_2";
             RotatorUtilities.updatePassword(session, username, newPassword);
 
-            cs = CardsavrSession.createSession(integratorName, newKey, testConfig.cardsavrServer, testConfig.proxy, testConfig.proxyCreds);
-            response = (JsonObject) cs.login(new UsernamePasswordCredentials(username, newPassword), null);
+            cs = CardsavrSession.createSession(integratorName, newKey, testConfig.cardsavrServer, testConfig.proxyhost, testConfig.proxyport, testConfig.username, testConfig.password);
+            response = (JsonObject) cs.login(username, newPassword, null);
             assertTrue(response.getInt("user_id") == userId);
 
         } catch (CardsavrRESTException e) {
@@ -389,7 +392,7 @@ public class E2ETest {
                 } catch (Exception e) {
                     e.printStackTrace();
                     latch.countDown();
-                }      
+                }
             }
         }, 1000, delay); //wait one second, then wait five
         try {

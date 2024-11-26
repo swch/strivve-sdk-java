@@ -1,16 +1,30 @@
 package com.strivve;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.io.OutputStream;
 import java.io.StringReader;
+import java.io.UnsupportedEncodingException;
+import java.net.Authenticator;
+import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
+import java.net.PasswordAuthentication;
+import java.net.Proxy;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.AbstractMap;
+import java.util.Arrays;
 import java.util.Base64;
 
 import javax.crypto.BadPaddingException;
@@ -25,38 +39,19 @@ import javax.json.JsonReader;
 import javax.json.JsonStructure;
 import javax.json.JsonValue;
 import javax.json.JsonValue.ValueType;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.X509Certificate;
 
-import org.apache.http.HttpHost;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.NameValuePair;
-import org.apache.http.auth.AuthScope;
-import org.apache.http.auth.UsernamePasswordCredentials;
-import org.apache.http.client.CredentialsProvider;
-import org.apache.http.client.methods.HttpDelete;
-import org.apache.http.client.methods.HttpEntityEnclosingRequestBase;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.utils.URLEncodedUtils;
-import org.apache.http.conn.ssl.NoopHostnameVerifier;
-import org.apache.http.conn.ssl.SSLContextBuilder;
-import org.apache.http.conn.ssl.TrustAllStrategy;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.impl.conn.DefaultProxyRoutePlanner;
-import org.apache.http.util.EntityUtils;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
+import java.security.GeneralSecurityException;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
-import java.security.KeyManagementException;
 import java.security.KeyPair;
-import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.NoSuchProviderException;
 import java.security.SignatureException;
@@ -68,23 +63,49 @@ public class CardsavrSession {
 
     private CardsavrClient client = new CardsavrClient();
 
-    private static boolean rejectUnauthorized = true;
-    public static void rejectUnauthorized(boolean reject) { rejectUnauthorized = reject; }
+    public static void rejectUnauthorized(boolean reject) { 
+        
+        // Create a trust manager that does not validate certificate chains
+        TrustManager[] trustAllCerts = new TrustManager[] { 
+            new X509TrustManager() {     
+                public X509Certificate[] getAcceptedIssuers() { 
+                    return new X509Certificate[0];
+                } 
+                public void checkClientTrusted(java.security.cert.X509Certificate[] certs, String authType) { } 
+                public void checkServerTrusted(java.security.cert.X509Certificate[] certs, String authType) { }          
+            } 
+        }; 
+        
+        HttpsURLConnection.setDefaultHostnameVerifier(new HostnameVerifier() {
+            public boolean verify(String arg0, SSLSession arg1) {
+                return true;
+            }
+        });       
 
-    public static CardsavrSession createSession(String integratorName, String integratorKey, HttpHost apiServer)
-            throws IOException {
-        return createSession(integratorName, integratorKey, apiServer, null, null);
+        if (!reject) {
+            try {
+                SSLContext sc = SSLContext.getInstance("SSL"); 
+                sc.init(null, trustAllCerts, new java.security.SecureRandom()); 
+                HttpsURLConnection.setDefaultSSLSocketFactory(sc.getSocketFactory());
+            } catch (GeneralSecurityException e) {
+            }         
+        }
     }
 
-    public static CardsavrSession createSession(String integratorName, String integratorKey, HttpHost apiServer, HttpHost proxyhost, UsernamePasswordCredentials creds)
+    public static CardsavrSession createSession(String integratorName, String integratorKey, URL apiServer)
             throws IOException {
-        return new CardsavrSession(integratorName, integratorKey, apiServer, proxyhost, creds);
+        return createSession(integratorName, integratorKey, apiServer, null, -1, null, null);
+    }
+
+    public static CardsavrSession createSession(String integratorName, String integratorKey, URL apiServer, String proxyhost, int proxyport, String username, String password)
+            throws IOException {
+        return new CardsavrSession(integratorName, integratorKey, apiServer, proxyhost, proxyport, username, password);
     }
 
     private transient String integratorName;
     private transient SecretKey integratorKey;
-    transient CloseableHttpClient httpClient;
-    private transient HttpHost apiServer;
+    private transient Proxy proxy;
+    private transient URL apiServer;
     private SessionObjects sessionObjects = new SessionObjects();
 
     private final class SessionObjects implements Serializable {
@@ -112,48 +133,37 @@ public class CardsavrSession {
         return baos.toByteArray();
     }
 
-    private CardsavrSession(String integratorName, String integratorKey, HttpHost apiServer, HttpHost proxyhost, UsernamePasswordCredentials proxyCreds)
+    private CardsavrSession(String integratorName, String integratorKey, URL apiServer, String proxyhost, int proxyport, String username, String password)
             throws IOException {
 
         this.integratorName = integratorName;
         this.integratorKey = Encryption.convertRawToAESKey(Base64.getDecoder().decode(integratorKey));
         this.apiServer = apiServer;
-        this.httpClient = buildHttpClient(proxyhost, proxyCreds);
-    }
-
-    private CloseableHttpClient buildHttpClient(HttpHost proxyhost, UsernamePasswordCredentials creds) throws IOException {
-
-        HttpClientBuilder builder = HttpClients.custom();
-        //can't run rejectunauthorized through a proxy...sorry!
-        if (!CardsavrSession.rejectUnauthorized) {
-            try {
-                builder = builder
-                    .setSSLContext(new SSLContextBuilder()
-                    .loadTrustMaterial(null, TrustAllStrategy.INSTANCE)
-                    .build())
-                    .setSSLHostnameVerifier(NoopHostnameVerifier.INSTANCE);
-            } catch (KeyManagementException | KeyStoreException | NoSuchAlgorithmException e) {
-                throw new IOException("Unable to establish insecure HttpClient: " + e.getMessage());
-            }
-        }
         if (proxyhost != null) {
-            if (creds != null) {
-                CredentialsProvider credentialsPovider = new BasicCredentialsProvider();
-                credentialsPovider.setCredentials(new AuthScope(proxyhost.getHostName(), proxyhost.getPort()), creds);
-                builder = builder.setDefaultCredentialsProvider(credentialsPovider);
-            }
-            builder = builder.setRoutePlanner(new DefaultProxyRoutePlanner(proxyhost));
-        } else if (creds != null) {
-            throw new IOException("Cannot set credentials on non-proxy connection.");            
+            Authenticator authenticator = new Authenticator() {
+                public PasswordAuthentication getPasswordAuthentication() {
+                    return (new PasswordAuthentication(username,
+                            password.toCharArray()));
+                }
+            };
+            Authenticator.setDefault(authenticator);
+            this.proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyhost, proxyport));
+
         }
-        return builder.build();
     }
 
     public void restore(byte[] sessionObjects) throws ClassNotFoundException, IOException {
-        this.sessionObjects = (SessionObjects)(new ObjectInputStream(new ByteArrayInputStream(sessionObjects))).readObject();
+        restore(sessionObjects, null);
     }
 
-    public JsonObject login(UsernamePasswordCredentials cardsavrCreds, JsonObject trace) throws IOException,
+    public void restore(byte[] sessionObjects, JsonObject trace) throws ClassNotFoundException, IOException {
+        this.sessionObjects = (SessionObjects)(new ObjectInputStream(new ByteArrayInputStream(sessionObjects))).readObject();
+        if (trace != null) {
+            this.sessionObjects.sessionTrace = trace;
+        }
+    }
+
+    public JsonObject login(String username, String password, JsonObject trace) throws IOException,
             CardsavrRESTException {
         
         // Trace key can be overridden, but almost always starts with the application username
@@ -161,7 +171,7 @@ public class CardsavrSession {
 
         try {
             // generate a passwordProof based on the integratorKey
-            String passwordProof = Encryption.generateSignedPasswordKey(cardsavrCreds.getPassword(), cardsavrCreds.getUserName(), integratorKey.getEncoded());
+            String passwordProof = Encryption.generateSignedPasswordKey(password, username, integratorKey.getEncoded());
 
             // generate a key pair for the client, share the public key with the server
             KeyPair kp;
@@ -172,7 +182,7 @@ public class CardsavrSession {
                     .encodeToString(UncompressedPublicKeys.encodeUncompressedECPublicKey((ECPublicKey) kp.getPublic()));
 
             JsonObject body = Json.createObjectBuilder()
-                .add("username", cardsavrCreds.getUserName())
+                .add("username", username)
                 .add("password_proof", passwordProof)
                 .add("client_public_key", clientPublicKeyBase64)
                 .build();
@@ -198,37 +208,57 @@ public class CardsavrSession {
         return (JsonObject)get("/session/end", null, null);
     }
 
-    public JsonValue get(String path, List<NameValuePair> filters, APIHeaders headers) throws IOException,
+    public JsonValue get(String path, List<AbstractMap.SimpleImmutableEntry<String, String>> filters, APIHeaders headers) throws IOException,
             CardsavrRESTException {
-        return client.apiRequest(new HttpGet(makeURLString(path, filters)), null, headers);
+        return client.apiRequest(this.makeConnection("GET", path, filters, this.proxy), null, headers);
     }
 
     public JsonValue get(String path, int id, APIHeaders headers) throws IOException, CardsavrRESTException {
-        return client.apiRequest(new HttpGet(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), null, headers);
+        return client.apiRequest(this.makeConnection("GET", Paths.get(path, Integer.toString(id)).toString(), null, this.proxy), null, headers);
     }
 
     public JsonValue post(String path, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
-        return client.apiRequest(new HttpPost(makeURLString(path, null)), body, headers);
+        return client.apiRequest(this.makeConnection("POST", path, null, this.proxy), body, headers);
     }
 
-    public JsonValue put(String path, List<NameValuePair> filters, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
-        return client.apiRequest(new HttpPut(makeURLString(path, filters)), body, headers);
+    public JsonValue put(String path, List<AbstractMap.SimpleImmutableEntry<String, String>> filters, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
+        return client.apiRequest(this.makeConnection("PUT", path, filters, this.proxy), body, headers);
     }
 
     public JsonValue put(String path, int id, JsonObject body, APIHeaders headers) throws IOException, CardsavrRESTException {
-        return client.apiRequest(new HttpPut(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), body, headers);
+        return client.apiRequest(this.makeConnection("PUT", Paths.get(path, Integer.toString(id)).toString(), null, this.proxy), body, headers);
     }
 
     public JsonValue delete(String path, int id, APIHeaders headers) throws IOException, CardsavrRESTException {
-        return client.apiRequest(new HttpDelete(makeURLString(Paths.get(path, Integer.toString(id)).toString(), null)), null, headers);
+        return client.apiRequest(this.makeConnection("DELETE", Paths.get(path, Integer.toString(id)).toString(), null, this.proxy), null, headers);
     }
 
-    private String makeURLString(String path, List<NameValuePair> filters) throws MalformedURLException {
+    private HttpsURLConnection makeConnection(String method, String path, List<AbstractMap.SimpleImmutableEntry<String, String>> filters, Proxy proxy) throws MalformedURLException, UnsupportedEncodingException, IOException {
+        HttpsURLConnection conn = (proxy != null) ? 
+            ((HttpsURLConnection) makeURL(path, filters).openConnection(proxy)) :
+            ((HttpsURLConnection) makeURL(path, filters).openConnection());
+        conn.setRequestMethod(method);
+        return conn;
+    }
+
+    private URL makeURL(String path, List<AbstractMap.SimpleImmutableEntry<String, String>> filters) throws MalformedURLException, UnsupportedEncodingException {
         path = path.replace('\\', '/');
         if (filters != null) {
-            path += "?" + URLEncodedUtils.format(filters, StandardCharsets.UTF_8);
+            path += "?" + filters.stream()
+                .map(p -> encodeUTF8(p.getKey()) + "=" + encodeUTF8(p.getValue()))
+                .reduce((p1, p2) -> p1 + "&" + p2)
+                .orElse("");
         }
-        return new URL("https", apiServer.getHostName(), apiServer.getPort(), path).toString();
+        return new URL("https", apiServer.getHost(), apiServer.getPort(), path);
+    }
+
+    private static String encodeUTF8(String s) {
+        try {
+            return URLEncoder.encode(s, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            //dumb
+        }
+        return s;
     }
 
     public APIHeaders createHeaders() {
@@ -252,84 +282,99 @@ public class CardsavrSession {
             return builder.build();        
         }
 
-        private void populateHeaders(HttpUriRequest request)
+        private void populateHeaders(HttpURLConnection request)
                 throws InvalidKeyException, NoSuchAlgorithmException, NoSuchPaddingException,
                 InvalidAlgorithmParameterException, IllegalBlockSizeException, BadPaddingException {
             if (hydration != null)
-                request.setHeader("x-cardsavr-hydration", hydration.toString());
+                request.setRequestProperty("x-cardsavr-hydration", hydration.toString());
             if (paging != null)
-                request.setHeader("x-cardsavr-paging", paging.toString());
+                request.setRequestProperty("x-cardsavr-paging", paging.toString());
             if (trace != null)
-                request.setHeader("x-cardsavr-trace", trace.toString());
+                request.setRequestProperty("x-cardsavr-trace", trace.toString());
             if (safeKey != null)
-                request.setHeader("x-cardsavr-cardholder-safe-key", Encryption.encryptAES256(safeKey, sessionObjects.sessionKey));
+                request.setRequestProperty("x-cardsavr-cardholder-safe-key", Encryption.encryptAES256(safeKey, sessionObjects.sessionKey));
             if (newSafeKey != null)
-                request.setHeader("x-cardsavr-new-cardholder-safe-key", Encryption.encryptAES256(newSafeKey, sessionObjects.sessionKey));
+                request.setRequestProperty("x-cardsavr-new-cardholder-safe-key", Encryption.encryptAES256(newSafeKey, sessionObjects.sessionKey));
             if (financialInsitution != null)
-                request.setHeader("x-cardsavr-financial-institution", financialInsitution);
+                request.setRequestProperty("x-cardsavr-financial-institution", financialInsitution);
             if (envelopeId != null)
-                request.setHeader("x-cardsavr-envelope-id", envelopeId);
+                request.setRequestProperty("x-cardsavr-envelope-id", envelopeId);
         }
     }
 
     private final class CardsavrClient {
 
-        private JsonValue apiRequest(HttpUriRequest request, JsonObject jsonBody, APIHeaders headers)
+        private JsonValue apiRequest(HttpURLConnection connection, JsonObject jsonBody, APIHeaders headers)
                 throws IOException, CardsavrRESTException {
 
              try {
                 SecretKey encryptionKey = sessionObjects.sessionKey != null ? sessionObjects.sessionKey : integratorKey;
                 String fullBody = null;
 
-                if (jsonBody != null && (request instanceof HttpEntityEnclosingRequestBase)) {
+                if (jsonBody != null) {
+                    final String[] methods = {"PATCH", "POST", "PUT"};
+                    if (Arrays.binarySearch(methods, connection.getRequestMethod().toUpperCase()) < 0) {
+                        throw new CardsavrRESTException("GET & DELETE must have null jsonBody "  + connection.getURL().getPath(), null, null);
+                    }
                     String encryptedBody = Encryption.encryptAES256(jsonBody.toString(), encryptionKey);
                     fullBody = Json.createObjectBuilder()
                         .add("encrypted_body", encryptedBody)
                         .build()
                         .toString();
-                    ((HttpEntityEnclosingRequestBase)request).setEntity(new StringEntity(fullBody));
-                    request.setHeader("Content-type", "application/json");
+                    connection.setRequestProperty("Content-type", "application/json");
                 } 
     
                 if (sessionObjects.sessionToken != null) {
-                    request.setHeader("x-cardsavr-session-jwt", sessionObjects.sessionToken);
+                    connection.setRequestProperty("x-cardsavr-session-jwt", sessionObjects.sessionToken);
                 }
 
                 String authorization = "SWCH-HMAC-SHA256 Credentials=" + integratorName;
                 String nonce = Long.toString(new Date().getTime());
-                String signature = Signing.signRequest(request.getURI().toURL().getFile(), authorization, nonce, encryptionKey, fullBody);
+                String signature = Signing.signRequest(connection.getURL().getFile(), authorization, nonce, encryptionKey, fullBody);
 
                 String version = getClass().getPackage().getImplementationVersion();
-                request.setHeader("x-cardsavr-client-application", integratorName + " Strivve Java SDK v" + version);
-                request.setHeader("x-cardsavr-trace", sessionObjects.sessionTrace.toString());
-                request.setHeader("x-cardsavr-nonce", nonce);
-                request.setHeader("x-cardsavr-authorization", authorization);
-                request.setHeader("x-cardsavr-signature", signature);
+                connection.setRequestProperty("x-cardsavr-client-application", integratorName + " Strivve Java SDK v" + version);
+                connection.setRequestProperty("x-cardsavr-trace", sessionObjects.sessionTrace.toString());
+                connection.setRequestProperty("x-cardsavr-nonce", nonce);
+                connection.setRequestProperty("x-cardsavr-authorization", authorization);
+                connection.setRequestProperty("x-cardsavr-signature", signature);
     
                 if (headers != null) {
-                    headers.populateHeaders(request);
+                    headers.populateHeaders(connection);
                 }
-        
-                HttpResponse response = httpClient.execute(request);
-                if (response.getStatusLine().getStatusCode() == HttpStatus.SC_NOT_FOUND) {
-                    throw new FileNotFoundException(response.getStatusLine() + " Couldn't locate entity for: " + request.getURI().toURL().getFile());
-                } else if (response.getStatusLine().getStatusCode() == 429) {
-                    throw new IOException(response.getStatusLine() + " Too many requests for: " + request.getURI().toURL().getFile());
-                } else if (response.getStatusLine().getStatusCode() == 403 || response.getStatusLine().getStatusCode() == 401) {
-                    throw new SecurityException(response.getStatusLine() + " " + request.getURI().toURL().getFile());
+                if (fullBody != null) {
+                    connection.setDoOutput(true);
+                    OutputStream os = connection.getOutputStream();
+                    os.write(fullBody.getBytes());
+                    os.flush();
+                    os.close();
                 }
+                    
+                int responseCode = connection.getResponseCode();
+
+                if (responseCode == 404) {
+                    throw new FileNotFoundException(responseCode + " Couldn't locate entity for: " + connection.getURL().getPath());
+                } else if (responseCode == 429) {
+                    throw new IOException(responseCode + " Too many requests for: " + connection.getURL().getPath());
+                } else if (responseCode == 403 || responseCode == 401) {
+                    throw new SecurityException(responseCode + " " + connection.getURL().getPath());
+                }
+                // for >= 400 errors we have to grab the error stream
+                InputStream is = responseCode >= 400 ? connection.getErrorStream() : connection.getInputStream();
 
                 try {
-                    authorization = response.getFirstHeader("x-cardsavr-authorization").getValue();
-                    nonce = response.getFirstHeader("x-cardsavr-nonce").getValue();
-                    signature = response.getFirstHeader("x-cardsavr-signature").getValue();
+                    authorization = connection.getHeaderField("x-cardsavr-authorization");
+                    nonce = connection.getHeaderField("x-cardsavr-nonce");
+                    signature = connection.getHeaderField("x-cardsavr-signature");
                 } catch (NullPointerException e) {
                     throw new CardsavrRESTException(
-                        "Missing signature/nonce/authorization header - error calling " + request.getURI().getPath(), 
+                        "Missing signature/nonce/authorization header - error calling " + connection.getURL().getPath(), 
                         null, null);
                 }
 
-                String result = EntityUtils.toString(response.getEntity());
+                BufferedReader br = new BufferedReader(new InputStreamReader(is));
+                String result = br.lines().collect(Collectors.joining());
+
                 if (result.length() > 0) {
                     String body;
                     fullBody = null;
@@ -341,10 +386,10 @@ public class CardsavrSession {
                     }
 
                     try {
-                        Signing.verifySignature(signature, request.getURI().toURL().getFile(), authorization, nonce, new SecretKey[] {encryptionKey}, fullBody);
+                        Signing.verifySignature(signature, connection.getURL().getFile(), authorization, nonce, new SecretKey[] {encryptionKey}, fullBody);
                     } catch (SignatureException e) {
                         throw new CardsavrRESTException(
-                            "Invalid signature header: " + signature + " - error calling " + request.getURI().getPath(), 
+                            "Invalid signature header: " + signature + " - error calling " + connection.getURL().getPath(), 
                             null, null);
                     }
 
@@ -356,7 +401,7 @@ public class CardsavrSession {
                             JsonObject obj = jsonst.asJsonObject();
                             if (obj.getJsonArray("_errors") != null) {
                                 throw new CardsavrRESTException(
-                                    response.getStatusLine() + " - error calling " + request.getURI().getPath(), 
+                                    responseCode + " - error calling " + connection.getURL().getPath(), 
                                     obj.getJsonArray("_errors"), obj);
                             }
                             return obj;
