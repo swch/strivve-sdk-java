@@ -15,7 +15,7 @@
           "cuid": "{{CARDHOLDER_UNIQUE_KEY}}"
         },
         "customer_key":"peLpzDnEHdhiiWEtuhUgIbN{{CARDHOLDER_UNIQUE_KEY}}",
-        "pan":"KOnalFfwdrBXlZD",
+        "pan":"4111411141114111",
         "cvv":"123",
         "expiration_month":"12",
         "expiration_year":"24",
