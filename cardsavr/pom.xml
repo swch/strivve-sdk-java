@@ -6,7 +6,7 @@
 
   <groupId>com.strivve</groupId>
   <artifactId>cardsavr</artifactId>
-  <version>1.0</version>
+  <version>1.1</version>
   
   <name>cardsavr</name>
   <!-- FIXME change it to the project's website -->
@@ -24,13 +24,6 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-text</artifactId>
       <version>1.10.0</version>
-    </dependency>
-
-
-    <dependency>
-        <groupId>org.apache.httpcomponents</groupId>
-        <artifactId>httpclient</artifactId>
-        <version>4.5.13</version>
     </dependency>
 
     <dependency>
